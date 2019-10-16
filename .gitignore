@@ -1,0 +1,7 @@
+*.idea
+*.jar
+*.war
+*.iml
+/ConsumerBackend/target/
+/ConsumerConsole/target/
+/ConsumerConsole/dependency-reduced-pom.xml

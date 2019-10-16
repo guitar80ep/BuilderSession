@@ -1,0 +1,3 @@
+To Run in Intellij: mvn jetty:run
+To Compile to JAR: mvn clean compile assembly:single
+To See Dependencies: mvn dependency:tree

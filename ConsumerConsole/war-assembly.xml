@@ -1,0 +1,31 @@
+<assembly>
+    <id>war</id>
+    <formats>
+        <format>war</format>
+    </formats>
+    <includeBaseDirectory>false</includeBaseDirectory>
+    <dependencySets>
+        <dependencySet>
+            <outputDirectory>WEB-INF/lib</outputDirectory>
+            <excludes>
+                <exclude>*:war</exclude>
+            </excludes>
+        </dependencySet>
+    </dependencySets>
+    <fileSets>
+        <fileSet>
+            <directory>${project.build.directory}/classes</directory>
+            <outputDirectory>WEB-INF/classes</outputDirectory>
+            <includes>
+                <include>/**/*</include>
+            </includes>
+        </fileSet>
+        <fileSet>
+            <directory>${project.basedir}/src/main/webapp/WEB-INF</directory>
+            <outputDirectory>WEB-INF</outputDirectory>
+            <includes>
+                <include>/**/*</include>
+            </includes>
+        </fileSet>
+    </fileSets>
+</assembly>

@@ -1,0 +1,96 @@
+syntax = "proto3";
+
+option java_multiple_files = true;
+option java_package = "org.build.session.jackson.proto";
+option java_outer_classname = "ConsumerProto";
+option objc_class_prefix = "PRO";
+
+package main;
+
+service ConsumerBackendService {
+
+    /*
+    An API that allows a user to specify how much resource
+    consumption a node will perform.
+    */
+    rpc Consume(ConsumeRequest) returns (ConsumeResponse);
+}
+
+
+message ConsumeRequest {
+    Candidate candidate = 1;
+    repeated UsageSpec usage = 2;
+}
+
+message ConsumeResponse {
+    repeated Error error = 1;
+    repeated InstanceSummary instances = 2;
+}
+
+/*
+A specification for defining the consumption of a resource.
+*/
+message UsageSpec {
+    Resource resource = 1;
+    Unit unit = 2;
+    double target = 3;
+    double actual = 4;
+}
+
+/*
+A view of how a particular instance is setup.
+*/
+message InstanceSummary {
+    string host = 1;
+    int32 port = 2;
+    repeated UsageSpec usage = 3;
+}
+
+/*
+The candidate who will operate on the message.
+*/
+enum Candidate {
+    // Refers to all consumers. This message will be distributed/shared.
+    ALL = 0;
+    // Refers to the receiver of this message.
+    SELF = 1;
+}
+
+/*
+The resource that can be consumed.
+*/
+enum Resource {
+    CPU = 0;
+    MEMORY = 1;
+}
+
+/*
+The unit that a resource can be specified in.
+*/
+enum Unit {
+    //Expressed as percentage of the workers available resources.
+    PERCENTAGE = 0;
+
+    BYTES = 64;
+    KILOBYTES = 65;
+    MEGABYTES = 66;
+    GIGABYTES = 67;
+
+    CORES = 128;
+}
+
+/*
+An error data type for passing back exceptions to the user.
+*/
+message Error {
+    ErrorCode type = 1;
+    string message = 2;
+}
+
+/*
+An error code for when things go wrong.
+*/
+enum ErrorCode {
+    UNKNOWN = 0;
+    INVALID_PARAMETER = 1;
+}
