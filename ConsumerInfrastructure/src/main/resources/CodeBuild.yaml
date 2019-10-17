@@ -1,13 +1,12 @@
 version: 0.2
 phases:
+
   install:
+    runtime-versions:
+      java: corretto8
     commands:
       - echo install step...
       - apt-get update -y
-      - apt-get install -y software-properties-common
-      - add-apt-repository ppa:openjdk-r/ppa
-      - apt-get update -y
-      - apt-get install -y openjdk-8-jdk
       - apt-get install -y maven
   pre_build:
     commands:
@@ -20,18 +19,15 @@ phases:
       - cd ConsumerBackend
       - mvn install
       - docker image build -t consumer-backend
-      # TODO: Need to make these account agnostic for the final version..
-      - docker tag consumer-backend:latest 428326348652.dkr.ecr.$AWS_REGION.amazonaws.com/consumer-backend:latest
+      - docker tag consumer-backend:latest $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/consumer-backend:latest
       - cd ../ConsumerConsole
       - mvn install
       - docker image build -t consumer-console
-      # TODO: Need to make these account agnostic for the final version..
-      - docker tag consumer-console:latest 428326348652.dkr.ecr.$AWS_REGION.amazonaws.com/consumer-console:latest
+      - docker tag consumer-console:latest $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/consumer-console:latest
       - echo Completed build of ConsumerService images on `date`
   post_build:
     commands:
       - echo Pushing the latest images to ECR
-      - # TODO: Need to make these account agnostic for the final version..
-      - docker push 428326348652.dkr.ecr.$AWS_REGION.amazonaws.com/consumer-backend:latest
-      - docker push 428326348652.dkr.ecr.$AWS_REGION.amazonaws.com/consumer-console:latest
+      - docker push $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/consumer-backend:latest
+      - docker push $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/consumer-console:latest
       - echo Completed pushing the latest images to ECR

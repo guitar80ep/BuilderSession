@@ -20,9 +20,6 @@ Parameters:
     Description: The selected network mode for the Task. Only allows versions
       that will simply work with this template.
     ConstraintDescription: Please choose a valid network mode [host] or [awsvpc].
-  ConsoleImageUrl:
-    Type: String
-    Description: The image URL for the console server. Likely setup in ECR.
   ConsolePort:
     Type: Number
     Default: 8080
@@ -35,9 +32,6 @@ Parameters:
     Type: Number
     Default: 512
     Description: The amount of Memory for the backend container.
-  BackendImageUrl:
-    Type: String
-    Description: The image URL for the backend server. Likely setup in ECR.
   BackendPort:
     Type: Number
     Default: 2581
@@ -52,8 +46,8 @@ Parameters:
     Description: The amount of Memory for the backend container.
   BackendPidConfig:
     Type: String
-    Default: "[0.1,0.1,0.1]"
-    Description: The PID config specified as [P,I,D] (ex. [1.0,2.0,3.0])
+    Default: "[500,0.075,0.100,0.02]"
+    Description: The PID config specified as [PaceInMillis, P,I,D] (ex. [5,1.0,2.0,3.0])
       used to stabilize resource consumption.
   Path:
     Type: String
@@ -75,7 +69,7 @@ Parameters:
     Type: String
     Default: ""
     Description: An IAM role to give ECS to call APIs on your
-      behalf when starting containers suchas pulling images from ECR.
+      behalf when starting containers such as pulling images from ECR.
   DesiredCapacity:
     Type: Number
     Default: '3'
@@ -154,7 +148,12 @@ Resources:
           Essential: true
           Cpu: !Ref 'BackendCpu'
           Memory: !Ref 'BackendMemory'
-          Image: !Ref 'BackendImageUrl'
+          Image:
+            - Fn::Join:
+              - ""
+              - [ !Ref 'AWS::AccountId', ".dkr.ecr.",
+                  !Ref 'AWS::Region', ".amazonaws.com/",
+                  !Ref 'BackendEcrRepo' ]
           PortMappings:
             - ContainerPort: !Ref 'BackendPort'
           EntryPoint:
@@ -170,14 +169,19 @@ Resources:
           LogConfiguration:
             LogDriver: awslogs
             Options:
-              awslogs-group: !Ref 'ServiceName'
+              awslogs-group: !Ref 'LogGroup'
               awslogs-region: !Ref 'AWS::Region'
-              awslogs-stream-prefix: Backend
+              awslogs-stream-prefix: "Backend"
         - Name: 'ConsumerConsole'
           Essential: true
           Cpu: !Ref 'ConsoleCpu'
           Memory: !Ref 'ConsoleMemory'
-          Image: !Ref 'ConsoleImageUrl'
+          Image:
+            - Fn::Join:
+                - ""
+                - [ !Ref 'AWS::AccountId', ".dkr.ecr.",
+                    !Ref 'AWS::Region', ".amazonaws.com/",
+                    !Ref 'ConsoleEcrRepo' ]
           PortMappings:
             - ContainerPort: !Ref 'ConsolePort'
           Environment:
@@ -191,9 +195,9 @@ Resources:
           LogConfiguration:
             LogDriver: awslogs
             Options:
-              awslogs-group: !Ref 'ServiceName'
+              awslogs-group: !Ref 'LogGroup'
               awslogs-region: !Ref 'AWS::Region'
-              awslogs-stream-prefix: Console
+              awslogs-stream-prefix: "Console"
 
 
   # The service. The service is a resource which allows you to run multiple
@@ -218,6 +222,62 @@ Resources:
         - RegistryArn: !GetAtt DiscoveryService.Arn
           ContainerName: "ConsumerBackend"
           ContainerPort: !Ref 'BackendPort'
+
+
+
+  ################################
+  #                              #
+  #  ELASTIC CONTAINER REGISTRY  #
+  #                              #
+  ################################
+
+  BackendEcrRepo:
+    Type: AWS::ECR::Repository
+    Properties:
+      RepositoryName: "consumer-backend"
+
+  ConsoleEcrRepo:
+    Type: AWS::ECR::Repository
+    Properties:
+      RepositoryName: "consumer-console"
+
+  ################################
+  #                              #
+  #           CODEBUILD          #
+  #                              #
+  ################################
+
+  CodeBuildProject:
+    Type: AWS::CodeBuild::Project
+    Properties:
+      Name: !Ref 'AWS::StackName'
+      Description: "A project to build ConsumerService launched on ECS."
+      ServiceRole: !Ref 'CodeBuildRole'
+      Artifacts:
+        Type: NO_ARTIFACTS
+      Environment:
+        ComputeType: BUILD_GENERAL1_SMALL
+        Image: aws/codebuild/amazonlinux2-x86_64-standard:1.0
+        Type: LINUX_CONTAINER
+        ImagePullCredentialsType: SERVICE_ROLE
+        EnvironmentVariables:
+          Name: "AWS_ACCOUNT_ID"
+          Type: "PLAINTEXT"
+          Value: !Ref 'AWS::AccountId'
+      Source:
+        BuildSpec: "ConsumerInfrastructure/src/main/resources/CodeBuild.yaml"
+        Type: GITHUB
+        Location: "https://github.com/guitar80ep/BuilderSession"
+      Triggers:
+        Webhook: true
+        FilterGroups:
+          - - Type: EVENT
+              Pattern: PUSH
+      LogsConfig:
+        CloudWatchLogs:
+          GroupName: !Ref 'LogGroup'
+          StreamName: "Build"
+          Status: "ENABLED"
 
 
   ################################
@@ -589,4 +649,25 @@ Resources:
                   - 'ecr:GetAuthorizationToken'
                   - 'ecr:BatchGetImage'
                   - 'ecr:GetDownloadUrlForLayer'
+                Resource: '*'
+
+  # Role for the CodeBuild to use to call AWS services.
+  CodeBuildRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: [codebuild.amazonaws.com]
+            Action: ['sts:AssumeRole']
+      Path: /
+      Policies:
+        - PolicyName: ecs-code-build
+          PolicyDocument:
+            Statement:
+              - Effect: Allow
+                Action:
+                  - "ecr:*"
+                  - "cloudtrail:LookupEvents"
                 Resource: '*'
