@@ -1,0 +1,592 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Deploy a service into an ECS cluster behind a public load balancer.
+Parameters:
+  ServiceName:
+    Type: String
+    Default: ConsumerService
+    Description: The name of the service to launch.
+  TaskCpu:
+    Type: Number
+    Default: 1024
+    Description: The amount of CPU for the entire Task.
+  TaskMemory:
+    Type: Number
+    Default: 1024
+    Description: The amount of Memory for the entire Task.
+  TaskNetworkMode:
+    Type: String
+    Default: "host"
+    AllowedValues: [host, awsvpc]
+    Description: The selected network mode for the Task. Only allows versions
+      that will simply work with this template.
+    ConstraintDescription: Please choose a valid network mode [host] or [awsvpc].
+  ConsoleImageUrl:
+    Type: String
+    Description: The image URL for the console server. Likely setup in ECR.
+  ConsolePort:
+    Type: Number
+    Default: 8080
+    Description: The port for the backend server to listen on.
+  ConsoleCpu:
+    Type: Number
+    Default: 256
+    Description: The amount of CPU for the backend container.
+  ConsoleMemory:
+    Type: Number
+    Default: 512
+    Description: The amount of Memory for the backend container.
+  BackendImageUrl:
+    Type: String
+    Description: The image URL for the backend server. Likely setup in ECR.
+  BackendPort:
+    Type: Number
+    Default: 2581
+    Description: The port for the backend server to listen on.
+  BackendCpu:
+    Type: Number
+    Default: 256
+    Description: The amount of CPU for the backend container.
+  BackendMemory:
+    Type: Number
+    Default: 512
+    Description: The amount of Memory for the backend container.
+  BackendPidConfig:
+    Type: String
+    Default: "[0.1,0.1,0.1]"
+    Description: The PID config specified as [P,I,D] (ex. [1.0,2.0,3.0])
+      used to stabilize resource consumption.
+  Path:
+    Type: String
+    Default: "*"
+    Description: A path on the public load balancer that this service
+      should be connected to. Use * to send all load balancer
+      traffic to this service.
+  Priority:
+    Type: Number
+    Default: 1
+    Description: The priority for the routing rule added to the load balancer.
+      This only applies if your have multiple services which have been
+      assigned to different paths on the load balancer.
+  DesiredCount:
+    Type: Number
+    Default: 3
+    Description: How many copies of the service task to run
+  ExecutionRole:
+    Type: String
+    Default: ""
+    Description: An IAM role to give ECS to call APIs on your
+      behalf when starting containers suchas pulling images from ECR.
+  DesiredCapacity:
+    Type: Number
+    Default: '3'
+    Description: Number of EC2 instances to launch in your ECS cluster.
+  ECSAMI:
+    Description: AMI ID
+    Type: AWS::SSM::Parameter::Value<AWS::EC2::Image::Id>
+    Default: /aws/service/ecs/optimized-ami/amazon-linux-2/recommended/image_id
+  InstanceType:
+    Description: EC2 instance type to launch in the AutoScaling Group.
+    Type: String
+    Default: r3.xlarge
+    AllowedValues: [t2.micro, t2.small,
+                    t2.medium, t2.large,
+                    r3.large, r3.xlarge,
+                    r3.2xlarge]
+    ConstraintDescription: Please choose a valid instance type.
+
+Conditions:
+  HasExecutionRole: !Not [ !Equals [!Ref 'ExecutionRole', ''] ]
+  HasTaskCpu: !Not [ !Equals [!Ref 'TaskCpu', ''] ]
+  HasTaskMemory: !Not [ !Equals [!Ref 'TaskMemory', ''] ]
+  HasConsoleCpu: !Not [ !Equals [!Ref 'ConsoleCpu', ''] ]
+  HasConsoleMemory: !Not [ !Equals [!Ref 'ConsoleMemory', ''] ]
+  HasBackendCpu: !Not [ !Equals [!Ref 'BackendCpu', ''] ]
+  HasBackendMemory: !Not [ !Equals [!Ref 'BackendMemory', ''] ]
+
+Mappings:
+  SubnetConfig:
+    VPC:
+      CIDR: '10.0.0.0/16'
+    PublicOne:
+      CIDR: '10.0.0.0/24'
+    PublicTwo:
+      CIDR: '10.0.1.0/24'
+
+Resources:
+
+  ################################
+  #                              #
+  #   ELASTIC CONTAINER SERVICE  #
+  #                              #
+  ################################
+
+  # The cluster for the the ConsumerService to live in.
+  ECSCluster:
+    Type: AWS::ECS::Cluster
+    Properties:
+      ClusterName: !Ref 'ServiceName'
+
+  # The task definition for the ConsumerService containing a
+  # Console and Backend container.
+  TaskDefinition:
+    Type: AWS::ECS::TaskDefinition
+    Properties:
+      Family: !Ref 'ServiceName'
+      Cpu:
+        Fn::If:
+          - 'HasTaskCpu'
+          - !Ref 'TaskCpu'
+          - !Ref "AWS::NoValue"
+      Memory:
+        Fn::If:
+          - 'HasTaskMemory'
+          - !Ref 'TaskMemory'
+          - !Ref "AWS::NoValue"
+      ExecutionRoleArn:
+        Fn::If:
+          - 'HasExecutionRole'
+          - !Ref 'ExecutionRole'
+          - !Ref "AWS::NoValue"
+      TaskRoleArn: !Ref 'ContainerRole'
+      NetworkMode: !Ref 'TaskNetworkMode'
+      ContainerDefinitions:
+        - Name: 'ConsumerBackend'
+          Essential: true
+          Cpu: !Ref 'BackendCpu'
+          Memory: !Ref 'BackendMemory'
+          Image: !Ref 'BackendImageUrl'
+          PortMappings:
+            - ContainerPort: !Ref 'BackendPort'
+          EntryPoint:
+            - "java"
+            - "-jar"
+            - "/usr/local/ConsumerBackend/ConsumerBackend.jar"
+            - "--port"
+            - !Ref 'BackendPort'
+            - "--serviceDiscoveryId"
+            - !Ref 'PrivateNamespace'
+            - "--pid"
+            - !Ref 'BackendPidConfig'
+          LogConfiguration:
+            LogDriver: awslogs
+            Options:
+              awslogs-group: !Ref 'ServiceName'
+              awslogs-region: !Ref 'AWS::Region'
+              awslogs-stream-prefix: Backend
+        - Name: 'ConsumerConsole'
+          Essential: true
+          Cpu: !Ref 'ConsoleCpu'
+          Memory: !Ref 'ConsoleMemory'
+          Image: !Ref 'ConsoleImageUrl'
+          PortMappings:
+            - ContainerPort: !Ref 'ConsolePort'
+          Environment:
+            - Name: CONSUMER_BACKEND_IP
+              Value: "127.0.0.1"
+            - Name: CONSUMER_BACKEND_PORT
+              Value: !Ref 'BackendPort'
+          DependsOn:
+            - ContainerName: ConsumerBackend
+              Condition: START
+          LogConfiguration:
+            LogDriver: awslogs
+            Options:
+              awslogs-group: !Ref 'ServiceName'
+              awslogs-region: !Ref 'AWS::Region'
+              awslogs-stream-prefix: Console
+
+
+  # The service. The service is a resource which allows you to run multiple
+  # copies of a type of task, and gather up their logs and metrics, as well
+  # as monitor the number of running tasks and replace any that have crashed
+  Service:
+    Type: AWS::ECS::Service
+    DependsOn: LoadBalancerRule
+    Properties:
+      ServiceName: !Ref 'ServiceName'
+      Cluster: !Ref 'ECSCluster'
+      DeploymentConfiguration:
+        MaximumPercent: 200
+        MinimumHealthyPercent: 75
+      DesiredCount: !Ref 'DesiredCount'
+      TaskDefinition: !Ref 'TaskDefinition'
+      LoadBalancers:
+        - ContainerName: ConsumerConsole
+          ContainerPort: !Ref 'ConsolePort'
+          TargetGroupArn: !Ref 'TargetGroup'
+      ServiceRegistries:
+        - RegistryArn: !GetAtt DiscoveryService.Arn
+          ContainerName: "ConsumerBackend"
+          ContainerPort: !Ref 'BackendPort'
+
+
+  ################################
+  #                              #
+  #        CLOUDWATCH LOGS       #
+  #                              #
+  ################################
+
+  # The log group to forward container log files to.
+  LogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName:  !Ref 'ServiceName'
+      RetentionInDays: 1
+
+
+  ################################
+  #                              #
+  #         LOAD BALANCERS       #
+  #                              #
+  ################################
+
+  PublicLoadBalancer:
+    Type: AWS::ElasticLoadBalancingV2::LoadBalancer
+    Properties:
+      Scheme: internet-facing
+      LoadBalancerAttributes:
+        - Key: idle_timeout.timeout_seconds
+          Value: '30'
+      Subnets:
+        # The load balancer is placed into the public subnets, so that traffic
+        # from the internet can reach the load balancer directly via the internet gateway
+        - !Ref PublicSubnetOne
+        - !Ref PublicSubnetTwo
+      SecurityGroups: [!Ref 'PublicLoadBalancerSecurityGroup']
+  PublicLoadBalancerListener:
+    Type: AWS::ElasticLoadBalancingV2::Listener
+    DependsOn:
+      - PublicLoadBalancer
+    Properties:
+      DefaultActions:
+        - TargetGroupArn: !Ref 'TargetGroup'
+          Type: 'forward'
+      LoadBalancerArn: !Ref 'PublicLoadBalancer'
+      Port: 80
+      Protocol: HTTP
+  TargetGroup:
+    Type: AWS::ElasticLoadBalancingV2::TargetGroup
+    Properties:
+      HealthCheckIntervalSeconds: 6
+      HealthCheckPath: /
+      HealthCheckProtocol: HTTP
+      HealthCheckTimeoutSeconds: 5
+      HealthyThresholdCount: 2
+      Name: !Ref 'ServiceName'
+      Port: !Ref 'ConsolePort'
+      Protocol: HTTP
+      UnhealthyThresholdCount: 2
+      VpcId: !Ref 'VPC'
+  LoadBalancerRule:
+    Type: AWS::ElasticLoadBalancingV2::ListenerRule
+    Properties:
+      Actions:
+        - TargetGroupArn: !Ref 'TargetGroup'
+          Type: 'forward'
+      Conditions:
+        - Field: path-pattern
+          Values: [!Ref 'Path']
+      ListenerArn: !Ref 'PublicLoadBalancerListener'
+      Priority: !Ref 'Priority'
+
+  ################################
+  #                              #
+  #       SERVICE DISCOVERY      #
+  #                              #
+  ################################
+
+  # Create a Private Namespace to use Service Discovery.
+  PrivateNamespace:
+    Type: AWS::ServiceDiscovery::PrivateDnsNamespace
+    Properties:
+      Name: consumer-service.com
+      Vpc: !Ref 'VPC'
+
+  # A discovery Service to use for ConsumerBackendService
+  DiscoveryService:
+    Type: AWS::ServiceDiscovery::Service
+    Properties:
+      Description: A DiscoveryService for hosts in BackendService to find each other.
+      DnsConfig:
+        RoutingPolicy: WEIGHTED
+        DnsRecords:
+          - TTL: 30
+            Type: SRV
+      HealthCheckCustomConfig:
+        FailureThreshold: 2
+      Name: ConsumerService
+      NamespaceId: !Ref PrivateNamespace
+
+  ################################
+  #                              #
+  #         EC2 INSTANCES        #
+  #                              #
+  ################################
+
+  # Autoscaling group. This launches the actual EC2 instances that will register
+  # themselves as members of the cluster, and run the docker containers.
+  ECSAutoScalingGroup:
+    Type: AWS::AutoScaling::AutoScalingGroup
+    Properties:
+      VPCZoneIdentifier:
+        - !Ref PublicSubnetOne
+        - !Ref PublicSubnetTwo
+      LaunchConfigurationName: !Ref 'ContainerInstances'
+      MinSize: '1'
+      MaxSize: !Ref 'DesiredCapacity'
+      DesiredCapacity: !Ref 'DesiredCapacity'
+    CreationPolicy:
+      ResourceSignal:
+        Timeout: PT15M
+    UpdatePolicy:
+      AutoScalingReplacingUpdate:
+        WillReplace: 'true'
+  ContainerInstances:
+    Type: AWS::AutoScaling::LaunchConfiguration
+    Properties:
+      ImageId: !Ref 'ECSAMI'
+      SecurityGroups: [!Ref 'EcsHostSecurityGroup']
+      InstanceType: !Ref 'InstanceType'
+      IamInstanceProfile: !Ref 'EC2InstanceProfile'
+      UserData:
+        Fn::Base64: !Sub |
+          #!/bin/bash -xe
+          echo ECS_CLUSTER=${ECSCluster} >> /etc/ecs/ecs.config
+          yum install -y aws-cfn-bootstrap
+          /opt/aws/bin/cfn-signal -e $? --stack ${ECSCluster} --resource ECSAutoScalingGroup --region ${AWS::Region}
+  AutoscalingRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: [application-autoscaling.amazonaws.com]
+            Action: ['sts:AssumeRole']
+      Path: /
+      Policies:
+        - PolicyName: service-autoscaling
+          PolicyDocument:
+            Statement:
+              - Effect: Allow
+                Action:
+                  - 'application-autoscaling:*'
+                  - 'cloudwatch:DescribeAlarms'
+                  - 'cloudwatch:PutMetricAlarm'
+                  - 'ecs:DescribeServices'
+                  - 'ecs:UpdateService'
+                Resource: '*'
+  EC2InstanceProfile:
+    Type: AWS::IAM::InstanceProfile
+    Properties:
+      Path: /
+      Roles: [!Ref 'EC2Role']
+
+  ################################
+  #                              #
+  #  VPC/SUBNET/SECURITY GROUP   #
+  #         NETWORKING           #
+  #                              #
+  ################################
+
+  # Setup a small VPC with two Public Subnets in
+  # the first 2 AZs of the region.
+  VPC:
+    Type: AWS::EC2::VPC
+    Properties:
+      EnableDnsSupport: true
+      EnableDnsHostnames: true
+      CidrBlock: !FindInMap ['SubnetConfig', 'VPC', 'CIDR']
+  PublicSubnetOne:
+    Type: AWS::EC2::Subnet
+    Properties:
+      AvailabilityZone:
+        Fn::Select:
+          - 0
+          - Fn::GetAZs: {Ref: 'AWS::Region'}
+      VpcId: !Ref 'VPC'
+      CidrBlock: !FindInMap ['SubnetConfig', 'PublicOne', 'CIDR']
+      MapPublicIpOnLaunch: true
+  PublicSubnetTwo:
+    Type: AWS::EC2::Subnet
+    Properties:
+      AvailabilityZone:
+        Fn::Select:
+          - 1
+          - Fn::GetAZs: {Ref: 'AWS::Region'}
+      VpcId: !Ref 'VPC'
+      CidrBlock: !FindInMap ['SubnetConfig', 'PublicTwo', 'CIDR']
+      MapPublicIpOnLaunch: true
+
+  # Perform the setup for the Public/Private subnets. Eouting
+  # tables and InternetGateway assist with this.
+  InternetGateway:
+    Type: AWS::EC2::InternetGateway
+  GatewayAttachement:
+    Type: AWS::EC2::VPCGatewayAttachment
+    Properties:
+      VpcId: !Ref 'VPC'
+      InternetGatewayId: !Ref 'InternetGateway'
+  PublicRouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref 'VPC'
+  PublicRoute:
+    Type: AWS::EC2::Route
+    DependsOn: GatewayAttachement
+    Properties:
+      RouteTableId: !Ref 'PublicRouteTable'
+      DestinationCidrBlock: '0.0.0.0/0'
+      GatewayId: !Ref 'InternetGateway'
+  PublicSubnetOneRouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref PublicSubnetOne
+      RouteTableId: !Ref PublicRouteTable
+  PublicSubnetTwoRouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref PublicSubnetTwo
+      RouteTableId: !Ref PublicRouteTable
+
+
+  # A security group for the EC2 hosts (container instances) that
+  # will run the containers. Two rules, allowing network traffic
+  # from a public facing load balancer and from other hosts in
+  # the security group.
+  EcsHostSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Access to the ECS hosts that run containers
+      VpcId: !Ref 'VPC'
+  EcsSecurityGroupIngressFromPublicALB:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      Description: Ingress from the public ALB
+      GroupId: !Ref 'EcsHostSecurityGroup'
+      IpProtocol: -1
+      SourceSecurityGroupId: !Ref 'PublicLoadBalancerSecurityGroup'
+  EcsSecurityGroupIngressFromSelf:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      Description: Ingress from other hosts in the same security group
+      GroupId: !Ref 'EcsHostSecurityGroup'
+      IpProtocol: -1
+      SourceSecurityGroupId: !Ref 'EcsHostSecurityGroup'
+  PublicLoadBalancerSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Access to the public facing load balancer
+      VpcId: !Ref 'VPC'
+      SecurityGroupIngress:
+        # Allow anyone on the internet to access the load balancer.
+        - CidrIp: 0.0.0.0/0
+          IpProtocol: -1
+
+  ################################
+  #                              #
+  #       IAM / PERMISSIONS      #
+  #                              #
+  ################################
+
+  # This is an IAM role which authorizes ECS to manage resources on your
+  # account on your behalf, such as updating your load balancer with the
+  # details of where your containers are, so that traffic can reach your
+  # containers.
+  ECSRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: [ecs.amazonaws.com]
+            Action: ['sts:AssumeRole']
+      Path: /
+      Policies:
+        - PolicyName: ecs-service
+          PolicyDocument:
+            Statement:
+              - Effect: Allow
+                Action:
+                  # Rules which allow ECS to attach network interfaces to instances
+                  # on your behalf in order for awsvpc networking mode to work right
+                  - 'ec2:AttachNetworkInterface'
+                  - 'ec2:CreateNetworkInterface'
+                  - 'ec2:CreateNetworkInterfacePermission'
+                  - 'ec2:DeleteNetworkInterface'
+                  - 'ec2:DeleteNetworkInterfacePermission'
+                  - 'ec2:Describe*'
+                  - 'ec2:DetachNetworkInterface'
+
+                  # Rules which allow ECS to update load balancers on your behalf
+                  # with the information sabout how to send traffic to your containers
+                  - 'elasticloadbalancing:DeregisterInstancesFromLoadBalancer'
+                  - 'elasticloadbalancing:DeregisterTargets'
+                  - 'elasticloadbalancing:Describe*'
+                  - 'elasticloadbalancing:RegisterInstancesWithLoadBalancer'
+                  - 'elasticloadbalancing:RegisterTargets'
+
+                  - "ecr:BatchCheckLayerAvailability"
+                  - "ecr:GetDownloadUrlForLayer"
+                  - "ecr:BatchGetImage"
+                Resource: '*'
+
+  # Role for the EC2 hosts. This allows the ECS agent on the EC2 hosts
+  # to communciate with the ECS control plane, as well as download the docker
+  # images from ECR to run on your host.
+  EC2Role:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: [ec2.amazonaws.com]
+            Action: ['sts:AssumeRole']
+      Path: /
+      Policies:
+        - PolicyName: ecs-service
+          PolicyDocument:
+            Statement:
+              - Effect: Allow
+                Action:
+                  - 'ecs:CreateCluster'
+                  - 'ecs:DeregisterContainerInstance'
+                  - 'ecs:DiscoverPollEndpoint'
+                  - 'ecs:Poll'
+                  - 'ecs:RegisterContainerInstance'
+                  - 'ecs:StartTelemetrySession'
+                  - 'ecs:Submit*'
+                  - 'logs:CreateLogStream'
+                  - 'logs:PutLogEvents'
+                  - 'ecr:GetAuthorizationToken'
+                  - 'ecr:BatchGetImage'
+                  - 'ecr:GetDownloadUrlForLayer'
+                Resource: '*'
+
+  # Role for the Containers to use to call AWS services.
+  ContainerRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: [ecs-tasks.amazonaws.com]
+            Action: ['sts:AssumeRole']
+      Path: /
+      Policies:
+        - PolicyName: ecs-container
+          PolicyDocument:
+            Statement:
+              - Effect: Allow
+                Action:
+                  - "servicediscovery:Get*"
+                  - "servicediscovery:List*"
+                  - 'logs:CreateLogStream'
+                  - 'logs:PutLogEvents'
+                  - 'ecr:GetAuthorizationToken'
+                  - 'ecr:BatchGetImage'
+                  - 'ecr:GetDownloadUrlForLayer'
+                Resource: '*'
