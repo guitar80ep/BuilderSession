@@ -9,9 +9,13 @@ public interface SystemUtil {
     public default long getUsedMemory(MemoryUnit unit) {
         return getTotalMemory(unit) - getFreeMemory(unit);
     }
+    public default double getMemoryPercentage() {
+        return (double) getFreeMemory(MemoryUnit.BYTES)
+                / (double) getTotalMemory(MemoryUnit.BYTES);
+    }
 
     public long getTotalProcessors();
-    public double getCpuPerentage ();
+    public double getCpuPercentage ();
     public default long getUnitsPerProcessor() {
         return 1024;
     }
@@ -19,13 +23,13 @@ public interface SystemUtil {
         return getUnitsPerProcessor() * getTotalProcessors();
     }
     public default long getCpuUnitsUtilized () {
-        return (long)(getCpuPerentage() * getCpuUnitsTotal());
+        return (long)(getCpuPercentage() * getCpuUnitsTotal());
     }
 
     public default String toMemoryString() {
         long usedMemory = this.getUsedMemory(SystemUtil.MemoryUnit.MEGABYTES);
         long totalMemory = this.getTotalMemory(SystemUtil.MemoryUnit.MEGABYTES);
-        double percentMemory = usedMemory / (double)totalMemory;
+        double percentMemory = this.getMemoryPercentage();
         return "[ MemoryUsed / MemoryTotal (%): " + usedMemory + " / " + totalMemory + " (" + percentMemory + ") ]";
     }
 

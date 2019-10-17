@@ -7,9 +7,9 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 
 import org.build.session.jackson.proto.Unit;
+import org.builder.session.jackson.utils.JavaSystemUtil;
 import org.builder.session.jackson.utils.PIDConfig;
 import org.builder.session.jackson.utils.SystemUtil;
-import org.builder.session.jackson.utils.SystemUtilImpl;
 
 import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableMap;
@@ -18,10 +18,12 @@ import com.google.common.collect.Range;
 
 import lombok.Getter;
 import lombok.NonNull;
+import lombok.extern.slf4j.Slf4j;
 
+@Slf4j
 public class CpuConsumer extends AbstractPidConsumer {
 
-    private static  SystemUtil SYSTEM = new SystemUtilImpl();
+    private static  SystemUtil SYSTEM = new JavaSystemUtil();
     private static final ImmutableSet<Unit> COMPUTE_UNITS = ImmutableSet.of(Unit.PERCENTAGE,
                                                                             Unit.CORES);
     private static final ImmutableMap<Unit, Range<Double>> UNIT_RANGE = ImmutableMap.<Unit, Range<Double>>builder()
@@ -62,6 +64,7 @@ public class CpuConsumer extends AbstractPidConsumer {
         Preconditions.checkArgument(COMPUTE_UNITS.contains(unit), "Must specify a compute unit, but got " + unit);
         Preconditions.checkArgument(UNIT_RANGE.get(unit).contains(value),
                                     "Must specify a value in range " + UNIT_RANGE.get(unit) + ", but got " + unit);
+        log.info("Setting CPU consumption from " + this.targetPercentage + " to " + value + " at " + unit.name());
         switch (unit) {
             case PERCENTAGE:
                 this.targetPercentage = value;
@@ -72,6 +75,7 @@ public class CpuConsumer extends AbstractPidConsumer {
                 default:
                     throw new IllegalArgumentException("Unexpected case.");
         }
+
     }
 
     @Override

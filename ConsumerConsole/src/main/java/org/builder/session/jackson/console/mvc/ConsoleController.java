@@ -14,14 +14,14 @@ public class ConsoleController {
     @RequestMapping(value = "/",
                     method = RequestMethod.GET)
     public String index(Model model) {
-        log.debug("Starting Index page!");
+        log.trace("Starting Index page!");
         return "index";
     }
 
     @RequestMapping(value = "/results",
                     method = RequestMethod.POST)
     public String results(Model model) {
-        log.debug("Starting Results page!");
+        log.trace("Starting Results page!");
         return "results";
     }
 }

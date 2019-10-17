@@ -17,7 +17,7 @@ import org.build.session.jackson.proto.Unit;
 import org.build.session.jackson.proto.UsageSpec;
 import org.builder.session.jackson.client.ConsumerBackendClient;
 import org.builder.session.jackson.dao.ServiceRegistry;
-import org.builder.session.jackson.dao.ServiceRegistryImpl;
+import org.builder.session.jackson.dao.ServiceRegistryFake;
 import org.builder.session.jackson.utils.PIDConfig;
 import org.builder.session.jackson.workflow.Workflow;
 import org.builder.session.jackson.workflow.utilize.Consumer;
@@ -49,7 +49,7 @@ public final class ConsumerBackendService extends ConsumerBackendServiceGrpc.Con
                                   @NonNull String serviceDiscoveryId) {
         this.host = host;
         this.port = port;
-        this.registry = new ServiceRegistryImpl(serviceDiscoveryId);
+        this.registry = new ServiceRegistryFake(serviceDiscoveryId, port);
 
         // Setup consumers...
         consumers = ImmutableMap.<Resource, Consumer>builder()
@@ -64,29 +64,19 @@ public final class ConsumerBackendService extends ConsumerBackendServiceGrpc.Con
         try {
             switch (request.getCandidate()) {
                 case SELF:
-                    for(UsageSpec usage : request.getUsageList()) {
-                        Preconditions.checkArgument(Double.compare(0.0, usage.getActual()) == 0,
-                                                    "Cannot specify field [actual] in calls to consume().");
-                        Optional<Consumer> consumer = Optional.of(consumers.get(usage.getResource()));
-                        consumer.orElseThrow(() -> new IllegalStateException("Could not find consumer for " + usage))
-                                .setTargetPercentage(usage.getTarget(), usage.getUnit());
-                    }
-                    responseObserver.onNext(onSingleSuccess());
+                    responseObserver.onNext(consume(new ServiceRegistry.Instance(this.host, this.port),
+                                                    request));
                     break;
                 case ALL:
-                    List<String> hosts = registry.resolveHosts();
+                    List<ServiceRegistry.Instance> hosts = registry.resolveHosts();
                     List<ConsumeResponse> responses = hosts.parallelStream()
-                                                           .map(h -> {
-                                                               int indexOfPortSeparator = h.lastIndexOf(":");
-                                                               String hostIp = h.substring(0, indexOfPortSeparator);
-                                                               int port = Integer.parseInt(h.substring(indexOfPortSeparator + 1));
-                                                               ConsumerBackendClient client = new ConsumerBackendClient(hostIp, port);
-                                                               return client.call(ConsumeRequest.newBuilder(request)
-                                                                                                //Propagate a single call to all known hosts.
-                                                                                                .setCandidate(Candidate.SELF)
-                                                                                                .build());
-                                                           })
+                                                           .map(h -> consume(h, ConsumeRequest.newBuilder(request)
+                                                                                              //Convert to call a single actor instead of ALL.
+                                                                                              .setCandidate(Candidate.SELF)
+                                                                                              .build()))
                                                            .collect(Collectors.toList());
+
+                    //Aggregate the results from all callers...
                     ConsumeResponse.Builder builder = ConsumeResponse.newBuilder();
                     responses.forEach(c -> {
                         builder.addAllInstances(c.getInstancesList());
@@ -106,6 +96,27 @@ public final class ConsumerBackendService extends ConsumerBackendServiceGrpc.Con
         }
 
         responseObserver.onCompleted();
+    }
+
+    /**
+     * Runs consume method for self if necessary or passes to other host.
+     */
+    protected ConsumeResponse consume(ServiceRegistry.Instance host, ConsumeRequest request) {
+        boolean isThisHostBeingInvoked = host.getAddress().equals(this.host)
+                && host.getPort() == this.port;
+        if(isThisHostBeingInvoked) {
+            for(UsageSpec usage : request.getUsageList()) {
+                Preconditions.checkArgument(Double.compare(0.0, usage.getActual()) == 0,
+                                            "Cannot specify field [actual] in calls to consume().");
+                Optional<Consumer> consumer = Optional.of(consumers.get(usage.getResource()));
+                consumer.orElseThrow(() -> new IllegalStateException("Could not find consumer for " + usage))
+                        .setTargetPercentage(usage.getTarget(), usage.getUnit());
+            }
+            return onSingleSuccess();
+        } else {
+            ConsumerBackendClient client = new ConsumerBackendClient(host.getAddress(), host.getPort());
+            return client.call(request);
+        }
     }
 
     protected ConsumeResponse onSingleSuccess() {

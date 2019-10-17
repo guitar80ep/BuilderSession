@@ -1,9 +1,9 @@
 package org.builder.session.jackson.workflow.utilize;
 
 import org.build.session.jackson.proto.Unit;
+import org.builder.session.jackson.utils.JavaSystemUtil;
 import org.builder.session.jackson.utils.PIDConfig;
 import org.builder.session.jackson.utils.SystemUtil;
-import org.builder.session.jackson.utils.SystemUtilImpl;
 
 import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableMap;
@@ -12,10 +12,12 @@ import com.google.common.collect.Range;
 
 import lombok.Getter;
 import lombok.NonNull;
+import lombok.extern.slf4j.Slf4j;
 
+@Slf4j
 public class MemoryConsumer extends AbstractPidConsumer {
 
-    private static  SystemUtil SYSTEM = new SystemUtilImpl();
+    private static  SystemUtil SYSTEM = new JavaSystemUtil();
     private static final ImmutableSet<Unit> MEMORY_UNITS = ImmutableSet.of(Unit.PERCENTAGE,
                                                                            Unit.BYTES,
                                                                            Unit.KILOBYTES,
@@ -40,7 +42,7 @@ public class MemoryConsumer extends AbstractPidConsumer {
         super(pidConfig);
         Preconditions.checkArgument(0.0 <= targetPercentage && targetPercentage <= 1.0, "Must be between 0.0 and 1.0.");
         this.targetPercentage = targetPercentage;
-        this.system = new SystemUtilImpl();
+        this.system = new JavaSystemUtil();
     }
 
     public MemoryConsumer(double targetPercentage) {
@@ -56,6 +58,7 @@ public class MemoryConsumer extends AbstractPidConsumer {
         Preconditions.checkArgument(MEMORY_UNITS.contains(unit), "Must specify a memory unit, but got " + unit);
         Preconditions.checkArgument(UNIT_RANGE.get(unit).contains(value),
                                     "Must specify a value in range " + UNIT_RANGE.get(unit) + ", but got " + unit);
+        log.info("Setting Memory consumption from " + this.targetPercentage + " to " + value + " at " + unit.name());
         switch (unit) {
             case PERCENTAGE:
                 this.targetPercentage = value;
@@ -79,8 +82,7 @@ public class MemoryConsumer extends AbstractPidConsumer {
 
     @Override
     public double getActualPercentage() {
-        return (double) this.system.getUsedMemory(SystemUtil.MemoryUnit.BYTES)
-                / (double) this.system.getTotalMemory(SystemUtil.MemoryUnit.BYTES);
+        return this.system.getMemoryPercentage();
     }
 
     @Override

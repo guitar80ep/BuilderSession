@@ -33,7 +33,6 @@ public class ConsumerBackendClient implements Client<ConsumeRequest, ConsumeResp
     public ConsumeResponse call (@NonNull ConsumeRequest request) {
         UUID uuid = UUID.randomUUID();
         try {
-
             log.debug("Call {} Request={}", uuid.toString(), JsonHelper.format(request));
             ConsumeResponse response = blockingStub.consume(request);
             log.debug("Call {} Response={}", uuid.toString(), JsonHelper.format(response));

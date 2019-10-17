@@ -8,7 +8,7 @@ import lombok.RequiredArgsConstructor;
 import sun.management.ManagementFactoryHelper;
 
 @RequiredArgsConstructor
-public class SystemUtilImpl implements SystemUtil {
+public class JavaSystemUtil implements SystemUtil {
 
     @NonNull
     private final OperatingSystemMXBean system =  (OperatingSystemMXBean) ManagementFactoryHelper.getOperatingSystemMXBean();
@@ -25,7 +25,7 @@ public class SystemUtilImpl implements SystemUtil {
     }
 
     @Override
-    public double getCpuPerentage () {
+    public double getCpuPercentage () {
         // This is cached because sometimes it reads incorrectly.
         double usage = system.getSystemCpuLoad();
         if(usage < 0) {
