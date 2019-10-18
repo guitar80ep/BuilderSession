@@ -6,8 +6,8 @@ phases:
       java: corretto8
     commands:
       - echo install step...
-      - apt-get update -y
-      - apt-get install -y maven
+      - yum update -y
+      - yum install -y maven
   pre_build:
     commands:
       - echo logging in to AWS ECR...

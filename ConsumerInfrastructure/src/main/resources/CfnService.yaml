@@ -148,18 +148,15 @@ Resources:
           Essential: true
           Cpu: !Ref 'BackendCpu'
           Memory: !Ref 'BackendMemory'
-          Image:
-            - Fn::Join:
-              - ""
-              - [ !Ref 'AWS::AccountId', ".dkr.ecr.",
-                  !Ref 'AWS::Region', ".amazonaws.com/",
-                  !Ref 'BackendEcrRepo' ]
+          Image: !Sub "${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/consumer-backend:latest"
           PortMappings:
             - ContainerPort: !Ref 'BackendPort'
           EntryPoint:
             - "java"
             - "-jar"
             - "/usr/local/ConsumerBackend/ConsumerBackend.jar"
+            - "--runProfiling"
+            - "10"
             - "--port"
             - !Ref 'BackendPort'
             - "--serviceDiscoveryId"
@@ -176,12 +173,7 @@ Resources:
           Essential: true
           Cpu: !Ref 'ConsoleCpu'
           Memory: !Ref 'ConsoleMemory'
-          Image:
-            - Fn::Join:
-                - ""
-                - [ !Ref 'AWS::AccountId', ".dkr.ecr.",
-                    !Ref 'AWS::Region', ".amazonaws.com/",
-                    !Ref 'ConsoleEcrRepo' ]
+          Image: !Sub "${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/consumer-console:latest"
           PortMappings:
             - ContainerPort: !Ref 'ConsolePort'
           Environment:
@@ -210,8 +202,9 @@ Resources:
       ServiceName: !Ref 'ServiceName'
       Cluster: !Ref 'ECSCluster'
       DeploymentConfiguration:
+        # We don't really care about availability for this dummy service.
         MaximumPercent: 200
-        MinimumHealthyPercent: 75
+        MinimumHealthyPercent: 0
       DesiredCount: !Ref 'DesiredCount'
       TaskDefinition: !Ref 'TaskDefinition'
       LoadBalancers:
@@ -222,6 +215,7 @@ Resources:
         - RegistryArn: !GetAtt DiscoveryService.Arn
           ContainerName: "ConsumerBackend"
           ContainerPort: !Ref 'BackendPort'
+      HealthCheckGracePeriodSeconds: 30
 
 
 
@@ -259,11 +253,10 @@ Resources:
         ComputeType: BUILD_GENERAL1_SMALL
         Image: aws/codebuild/amazonlinux2-x86_64-standard:1.0
         Type: LINUX_CONTAINER
-        ImagePullCredentialsType: SERVICE_ROLE
         EnvironmentVariables:
-          Name: "AWS_ACCOUNT_ID"
-          Type: "PLAINTEXT"
-          Value: !Ref 'AWS::AccountId'
+          - Name: "AWS_ACCOUNT_ID"
+            Type: "PLAINTEXT"
+            Value: !Ref 'AWS::AccountId'
       Source:
         BuildSpec: "ConsumerInfrastructure/src/main/resources/CodeBuild.yaml"
         Type: GITHUB
@@ -669,5 +662,6 @@ Resources:
               - Effect: Allow
                 Action:
                   - "ecr:*"
+                  - "logs:*"
                   - "cloudtrail:LookupEvents"
                 Resource: '*'
