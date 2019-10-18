@@ -30,7 +30,9 @@ import com.google.common.collect.ImmutableMap;
 
 import io.grpc.stub.StreamObserver;
 import lombok.NonNull;
+import lombok.extern.slf4j.Slf4j;
 
+@Slf4j
 public final class ConsumerBackendService extends ConsumerBackendServiceGrpc.ConsumerBackendServiceImplBase {
 
     @NonNull
@@ -77,6 +79,7 @@ public final class ConsumerBackendService extends ConsumerBackendServiceGrpc.Con
                                                                                               .build()))
                                                            .collect(Collectors.toList());
 
+                    log.debug("Aggregating calls from ALL hosts: {}", responses);
                     //Aggregate the results from all callers...
                     ConsumeResponse.Builder builder = ConsumeResponse.newBuilder();
                     responses.forEach(c -> {
@@ -108,6 +111,7 @@ public final class ConsumerBackendService extends ConsumerBackendServiceGrpc.Con
         List<UsageSpec> usages = Optional.ofNullable(request.getUsageList())
                                          .orElse(new ArrayList<>());
         if(isThisHostBeingInvoked) {
+            log.debug("Handling a call to this instance {}.", new ServiceRegistry.Instance(this.host, this.port));
             for(UsageSpec usage : usages) {
                 Preconditions.checkArgument(Double.compare(0.0, usage.getActual()) == 0,
                                             "Cannot specify field [actual] in calls to consume().");
@@ -117,6 +121,7 @@ public final class ConsumerBackendService extends ConsumerBackendServiceGrpc.Con
             }
             return onSingleSuccess();
         } else {
+            log.debug("Propagating calls on to neighboring host {}", host);
             ConsumerBackendClient client = new ConsumerBackendClient(host.getAddress(), host.getPort());
             return client.call(request);
         }

@@ -62,8 +62,7 @@ public class Profiler implements Closeable {
         });
     }
 
-    public String getProfileInfo(SystemUtil utilToProfile) throws Exception {
-        StringBuilder builder = new StringBuilder();
+    public void profile (SystemUtil utilToProfile) throws Exception {
         log.info("Sleeping the system briefly to await profiler startup.");
         Thread.sleep(PROFILING_STARTUP_AWAIT_TIME.toMillis());
         Instant profileStart = Instant.now();
@@ -93,23 +92,18 @@ public class Profiler implements Closeable {
             Thread.sleep(1);
         }
 
-        appendNewLine(builder, "PROFILING STATS [ ");
-        appendNewLine(builder, "Processors (#): " + utilToProfile.getTotalProcessors());
-        appendNewLine(builder, "TotalMemory (MB): " + utilToProfile.getTotalMemory(SystemUtil.MemoryUnit.MEGABYTES));
-        appendNewLine(builder, "RefreshRate (ms):");
+        log.info("Found Processors (#): {}", utilToProfile.getTotalProcessors());
+        log.info("Found TotalMemory (MB): {}", utilToProfile.getTotalMemory(SystemUtil.MemoryUnit.MEGABYTES));
         statsMap.entrySet().forEach(e -> {
             Resource resource = e.getKey();
             StatTracker stat = e.getValue();
-            appendNewLine(builder, resource.name() + " : " + stat);
+            log.info("Found {} RefreshRate (ms): {}", resource.name(), stat);
         });
-        builder.append("]");
-
-        return builder.toString();
     }
 
-    public void appendNewLine(StringBuilder builder, String message) {
-        builder.append(message);
+    protected StringBuilder newLine(StringBuilder builder) {
         builder.append(System.getProperty("line.separator"));
+        return builder;
     }
 
     @Override

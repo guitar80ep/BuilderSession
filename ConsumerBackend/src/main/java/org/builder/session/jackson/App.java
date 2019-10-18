@@ -78,7 +78,7 @@ public class App
                                                       Integer::parseInt);
         secondsToProfile.ifPresent(s -> {
             try (Profiler profiler = new Profiler(Duration.ofSeconds(s))) {
-                log.warn(profiler.getProfileInfo(new JavaSystemUtil()));
+                profiler.profile(new JavaSystemUtil());
             } catch (Throwable t) {
                 log.error("System profiling failed due to: {}", t);
                 System.exit(1);

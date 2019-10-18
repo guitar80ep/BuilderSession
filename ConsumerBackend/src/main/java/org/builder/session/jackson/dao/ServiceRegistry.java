@@ -6,6 +6,7 @@ import java.util.Random;
 
 import lombok.Data;
 import lombok.NonNull;
+import lombok.ToString;
 
 public interface ServiceRegistry {
 
@@ -18,6 +19,7 @@ public interface ServiceRegistry {
     }
 
     @Data
+    @ToString
     public static class Instance {
         @NonNull
         private final String address;
