@@ -21,7 +21,7 @@ phases:
       - cd ConsumerBackend
       - mvn --version
       - mvn install
-      - docker image build -t consumer-backend
+      - docker image build -t consumer-backend:latest
       - docker tag consumer-backend:latest $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/consumer-backend:latest
       - echo Completed build of ConsumerBackend images on `date`
   post_build:
