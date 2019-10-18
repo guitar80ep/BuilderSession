@@ -24,7 +24,7 @@ public class ServiceRegistryImpl implements ServiceRegistry {
     }
 
     protected ServiceDiscoveryClient createClient() {
-        return client;
+        return ServiceDiscoveryClient.create();
     }
 
     @Override

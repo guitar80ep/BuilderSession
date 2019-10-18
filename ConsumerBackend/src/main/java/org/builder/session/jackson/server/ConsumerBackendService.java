@@ -1,5 +1,6 @@
 package org.builder.session.jackson.server;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -104,8 +105,10 @@ public final class ConsumerBackendService extends ConsumerBackendServiceGrpc.Con
     protected ConsumeResponse consume(ServiceRegistry.Instance host, ConsumeRequest request) {
         boolean isThisHostBeingInvoked = host.getAddress().equals(this.host)
                 && host.getPort() == this.port;
+        List<UsageSpec> usages = Optional.ofNullable(request.getUsageList())
+                                         .orElse(new ArrayList<>());
         if(isThisHostBeingInvoked) {
-            for(UsageSpec usage : request.getUsageList()) {
+            for(UsageSpec usage : usages) {
                 Preconditions.checkArgument(Double.compare(0.0, usage.getActual()) == 0,
                                             "Cannot specify field [actual] in calls to consume().");
                 Optional<Consumer> consumer = Optional.of(consumers.get(usage.getResource()));
