@@ -8,8 +8,7 @@ phases:
       - echo install step...
       - yum update -y maven
       - yum install -y maven
-      - yum update -y docker
-      - yum install -y docker
+      # Docker and Java are already installed on the system.
   pre_build:
     commands:
       - echo logging in to AWS ECR...
