@@ -20,6 +20,7 @@ import org.builder.session.jackson.client.ConsumerBackendClient;
 import org.builder.session.jackson.dao.ServiceRegistry;
 import org.builder.session.jackson.dao.ServiceRegistryImpl;
 import org.builder.session.jackson.utils.PIDConfig;
+import org.builder.session.jackson.utils.SystemUtil;
 import org.builder.session.jackson.workflow.Workflow;
 import org.builder.session.jackson.workflow.utilize.Consumer;
 import org.builder.session.jackson.workflow.utilize.CpuConsumer;
@@ -50,6 +51,7 @@ public final class ConsumerBackendService extends ConsumerBackendServiceGrpc.Con
 
     public ConsumerBackendService(@NonNull final String host,
                                   final int port,
+                                  @NonNull final SystemUtil systemUtil,
                                   @NonNull final PIDConfig pidConfig,
                                   @NonNull String serviceDiscoveryId) {
         this.host = host;
@@ -58,8 +60,8 @@ public final class ConsumerBackendService extends ConsumerBackendServiceGrpc.Con
 
         // Setup consumers...
         consumers = ImmutableMap.<Resource, Consumer>builder()
-                .put(Resource.CPU, new CpuConsumer(INITIAL_TARGET, pidConfig))
-                .put(Resource.MEMORY, new MemoryConsumer(INITIAL_TARGET, pidConfig))
+                .put(Resource.CPU, new CpuConsumer(INITIAL_TARGET, systemUtil, pidConfig))
+                .put(Resource.MEMORY, new MemoryConsumer(INITIAL_TARGET, systemUtil, pidConfig))
                 .build();
         consumers.forEach((r, c) -> workflow.consume(c));
     }

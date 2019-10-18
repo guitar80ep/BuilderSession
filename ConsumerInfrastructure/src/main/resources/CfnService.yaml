@@ -27,11 +27,11 @@ Parameters:
   ConsoleCpu:
     Type: Number
     Default: 1024
-    Description: The amount of CPU for the backend container.
+    Description: The amount of CPU in VCPU units for the backend container.
   ConsoleMemory:
     Type: Number
     Default: 1024
-    Description: The amount of Memory for the backend container.
+    Description: The amount of Memory in MB for the backend container.
   BackendPort:
     Type: Number
     Default: 2581
@@ -39,11 +39,15 @@ Parameters:
   BackendCpu:
     Type: Number
     Default: 1024
-    Description: The amount of CPU for the backend container.
+    Description: The amount of CPU in VCPU units for the backend container.
   BackendMemory:
     Type: Number
     Default: 1024
-    Description: The amount of Memory for the backend container.
+    Description: The amount of Memory in MB for the backend container.
+  BackendHeap:
+    Type: Number
+    Default: 924
+    Description: The amount of Memory in MB for the backend container.
   BackendPidConfig:
     Type: String
     Default: "[500,0.075,0.100,0.02]"
@@ -156,8 +160,14 @@ Resources:
             - ContainerPort: !Ref 'BackendPort'
           EntryPoint:
             - "java"
+            - "-Xmx"
+            - !Ref 'BackendHeap'
             - "-jar"
             - "/usr/local/ConsumerBackend/ConsumerBackend.jar"
+            - "--cpu"
+            - !Ref 'BackendCpu'
+            - "--memory"
+            - !Ref 'BackendHeap'
             - "--runProfiling"
             - "10"
             - "--port"

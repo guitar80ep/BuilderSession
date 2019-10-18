@@ -6,38 +6,28 @@ public interface SystemUtil {
 
     public long getFreeMemory(MemoryUnit unit);
     public long getTotalMemory(MemoryUnit unit);
-    public default long getUsedMemory(MemoryUnit unit) {
-        return getTotalMemory(unit) - getFreeMemory(unit);
-    }
-    public default double getMemoryPercentage() {
-        return (double) getFreeMemory(MemoryUnit.BYTES)
-                / (double) getTotalMemory(MemoryUnit.BYTES);
-    }
+    public long getUsedMemory(MemoryUnit unit);
+    public double getMemoryPercentage();
 
-    public long getTotalProcessors();
-    public double getCpuPercentage ();
+    public double getCpuPercentage();
+    public long getCpuUnitsTotal();
+    public long getCpuUnitsUtilized ();
     public default long getUnitsPerProcessor() {
         return 1024;
-    }
-    public default long getCpuUnitsTotal () {
-        return getUnitsPerProcessor() * getTotalProcessors();
-    }
-    public default long getCpuUnitsUtilized () {
-        return (long)(getCpuPercentage() * getCpuUnitsTotal());
     }
 
     public default String toMemoryString() {
         long usedMemory = this.getUsedMemory(SystemUtil.MemoryUnit.MEGABYTES);
         long totalMemory = this.getTotalMemory(SystemUtil.MemoryUnit.MEGABYTES);
         double percentMemory = this.getMemoryPercentage();
-        return "[ MemoryUsed / MemoryTotal (%): " + usedMemory + " / " + totalMemory + " (" + percentMemory + ") ]";
+        return "Profiled: [ MemoryUsed / MemoryTotal (%): " + usedMemory + "MB / " + totalMemory + "MB (" + percentMemory + ") ]";
     }
 
     public default String toCpuString() {
         long usedCpu = this.getCpuUnitsUtilized();
         long totalCpu = this.getCpuUnitsTotal();
         double percentCpu = usedCpu / (double)totalCpu;
-        return"[ CpuUSed / CpuTotal (%): " + usedCpu + " / " + totalCpu + " (" + percentCpu + ") ]";
+        return"Profiled: [ CpuUsed / CpuTotal (%): " + usedCpu + "vCPU / " + totalCpu + "vCPU (" + percentCpu + ") ]";
     }
 
     @RequiredArgsConstructor

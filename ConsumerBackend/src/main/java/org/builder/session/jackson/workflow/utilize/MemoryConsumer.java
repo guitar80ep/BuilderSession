@@ -1,7 +1,6 @@
 package org.builder.session.jackson.workflow.utilize;
 
 import org.build.session.jackson.proto.Unit;
-import org.builder.session.jackson.utils.JavaSystemUtil;
 import org.builder.session.jackson.utils.PIDConfig;
 import org.builder.session.jackson.utils.SystemUtil;
 
@@ -17,19 +16,11 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 public class MemoryConsumer extends AbstractPidConsumer {
 
-    private static  SystemUtil SYSTEM = new JavaSystemUtil();
     private static final ImmutableSet<Unit> MEMORY_UNITS = ImmutableSet.of(Unit.PERCENTAGE,
                                                                            Unit.BYTES,
                                                                            Unit.KILOBYTES,
                                                                            Unit.MEGABYTES,
                                                                            Unit.GIGABYTES);
-    private static final ImmutableMap<Unit, Range<Double>> UNIT_RANGE = ImmutableMap.<Unit, Range<Double>>builder()
-            .put(Unit.PERCENTAGE, Range.open(0.0, 1.0))
-            .put(Unit.BYTES, Range.open(0.0, (double)SYSTEM.getTotalMemory(SystemUtil.MemoryUnit.BYTES)))
-            .put(Unit.KILOBYTES, Range.open(0.0, (double)SYSTEM.getTotalMemory(SystemUtil.MemoryUnit.KILOBYTES)))
-            .put(Unit.MEGABYTES, Range.open(0.0, (double)SYSTEM.getTotalMemory(SystemUtil.MemoryUnit.MEGABYTES)))
-            .put(Unit.GIGABYTES, Range.open(0.0, (double)SYSTEM.getTotalMemory(SystemUtil.MemoryUnit.GIGABYTES)))
-            .build();
 
     @Getter
     private final String name = "MemoryConsumer";
@@ -37,47 +28,29 @@ public class MemoryConsumer extends AbstractPidConsumer {
     private final SystemUtil system;
     @Getter
     private double targetPercentage;
+    private final ImmutableMap<Unit, Double> max;
 
-    public MemoryConsumer(double targetPercentage, @NonNull PIDConfig pidConfig) {
+    public MemoryConsumer(double targetPercentage, SystemUtil system, @NonNull PIDConfig pidConfig) {
         super(pidConfig);
         Preconditions.checkArgument(0.0 <= targetPercentage && targetPercentage <= 1.0, "Must be between 0.0 and 1.0.");
         this.targetPercentage = targetPercentage;
-        this.system = new JavaSystemUtil();
-    }
-
-    public MemoryConsumer(double targetPercentage) {
-        this(targetPercentage, PIDConfig.builder()
-                                        .proportionFactor(0.10)
-                                        .derivativeFactor(0.15)
-                                        .integralFactor(0.05)
-                                        .build());
+        this.system = system;
+        this.max = ImmutableMap.<Unit, Double>builder()
+                .put(Unit.PERCENTAGE, 1.0)
+                .put(Unit.BYTES, (double)this.system.getTotalMemory(SystemUtil.MemoryUnit.BYTES))
+                .put(Unit.KILOBYTES,  (double)this.system.getTotalMemory(SystemUtil.MemoryUnit.KILOBYTES))
+                .put(Unit.MEGABYTES, (double)this.system.getTotalMemory(SystemUtil.MemoryUnit.MEGABYTES))
+                .put(Unit.GIGABYTES, (double) this.system.getTotalMemory(SystemUtil.MemoryUnit.GIGABYTES))
+                .build();
     }
 
     @Override
     public void setTargetPercentage (double value, @NonNull Unit unit) {
         Preconditions.checkArgument(MEMORY_UNITS.contains(unit), "Must specify a memory unit, but got " + unit);
-        Preconditions.checkArgument(UNIT_RANGE.get(unit).contains(value),
-                                    "Must specify a value in range " + UNIT_RANGE.get(unit) + ", but got " + unit);
+        Preconditions.checkArgument(Range.open(0.0, max.get(unit)).contains(value),
+                                    "Must specify a value in max (0.0, " + max.get(unit) + "), but got " + unit);
         log.info("Setting Memory consumption from " + this.targetPercentage + " to " + value + " at " + unit.name());
-        switch (unit) {
-            case PERCENTAGE:
-                this.targetPercentage = value;
-                break;
-            case BYTES:
-                this.targetPercentage = value / (double) system.getTotalMemory(SystemUtil.MemoryUnit.BYTES);
-                break;
-            case KILOBYTES:
-                this.targetPercentage = value / (double) system.getTotalMemory(SystemUtil.MemoryUnit.KILOBYTES);
-                break;
-            case MEGABYTES:
-                this.targetPercentage = value / (double) system.getTotalMemory(SystemUtil.MemoryUnit.MEGABYTES);
-                break;
-            case GIGABYTES:
-                this.targetPercentage = value / (double) system.getTotalMemory(SystemUtil.MemoryUnit.GIGABYTES);
-                break;
-            default:
-                throw new IllegalArgumentException("Unexpected case.");
-        }
+        this.targetPercentage = value / max.get(unit);
     }
 
     @Override

@@ -26,7 +26,6 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 public class Profiler implements Closeable {
     // Used to help generate random CPU usage for profiling.
-    public static final Duration PROFILING_STARTUP_AWAIT_TIME = Duration.ofSeconds(2);
     public static final int PROFILING_MAX_SLEEP_IN_NANOS = 3000000;
     public static final int PROFILING_MAX_COMPUTATIONS = 1000000;
     public static final Map<Resource, Function<SystemUtil, Double>> RESOURCES_TO_PROFILE
@@ -63,8 +62,6 @@ public class Profiler implements Closeable {
     }
 
     public void profile (SystemUtil utilToProfile) throws Exception {
-        log.info("Sleeping the system briefly to await profiler startup.");
-        Thread.sleep(PROFILING_STARTUP_AWAIT_TIME.toMillis());
         Instant profileStart = Instant.now();
 
         //Set inital state and StatTrackers...
@@ -92,18 +89,13 @@ public class Profiler implements Closeable {
             Thread.sleep(1);
         }
 
-        log.info("Found Processors (#): {}", utilToProfile.getTotalProcessors());
-        log.info("Found TotalMemory (MB): {}", utilToProfile.getTotalMemory(SystemUtil.MemoryUnit.MEGABYTES));
+        log.info(utilToProfile.toCpuString());
+        log.info(utilToProfile.toMemoryString());
         statsMap.entrySet().forEach(e -> {
             Resource resource = e.getKey();
             StatTracker stat = e.getValue();
             log.info("Found {} RefreshRate (ms): {}", resource.name(), stat);
         });
-    }
-
-    protected StringBuilder newLine(StringBuilder builder) {
-        builder.append(System.getProperty("line.separator"));
-        return builder;
     }
 
     @Override

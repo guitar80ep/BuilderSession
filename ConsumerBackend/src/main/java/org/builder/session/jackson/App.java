@@ -10,10 +10,11 @@ import java.util.function.Function;
 import org.apache.logging.log4j.Level;
 import org.builder.session.jackson.server.Server;
 import org.builder.session.jackson.server.ServerImpl;
-import org.builder.session.jackson.utils.JavaSystemUtil;
 import org.builder.session.jackson.utils.LoggingInitializer;
 import org.builder.session.jackson.utils.PIDConfig;
 import org.builder.session.jackson.utils.Profiler;
+import org.builder.session.jackson.utils.SimulatedContainerSystemUtil;
+import org.builder.session.jackson.utils.SystemUtil;
 
 import com.google.common.base.Preconditions;
 import com.google.common.collect.Range;
@@ -41,17 +42,24 @@ public class App
         log.info("Logging is initialized!");
 
         //Gather port information...
-        parseProfiling(args);
+        Preconditions.checkArgument(args.length >= 2,
+                                    "Expected at least 10 arguments to this application " +
+                                            "[--memory, --cpu, --port, --pidConfig, --serviceDiscoveryId].");
         final int port = parsePort(args);
         final PIDConfig pidConfig = parsePidConfig(args);
         final String dnsName = parseServiceDiscoveryId(args);
+        final long cpuInVcpu = parseCpuShares(args);
+        final long memoryInMB = parseMemoryShares(args);
+        final SystemUtil systemUtil = parseProfiling(args, cpuInVcpu, memoryInMB);
+
+
 
         log.info("Starting a server on port {}, with PID {}, and DNS \"{}\".",
                  new Object[]{ port,
                                pidConfig,
                                dnsName });
 
-        try (Server server = new ServerImpl(port, pidConfig, dnsName);
+        try (Server server = new ServerImpl(port, systemUtil, pidConfig, dnsName);
              BufferedReader reader = new BufferedReader(new InputStreamReader(System.in))) {
             server.start();
             while(!shouldStop(reader)) {
@@ -69,21 +77,40 @@ public class App
         return reader.ready();
     }
 
-    protected static void parseProfiling(final @NonNull String[] args) {
-        Preconditions.checkArgument(args.length >= 2, "Expected at least 2 arguments to this application.");
+    protected static long parseCpuShares(final @NonNull String[] args) {
+        return parseArg(args, true, "--cpu", s -> {
+            long cpuInVCPU = Integer.parseInt(s);
+            Range<Long> range = Range.open(0L, Long.MAX_VALUE);
+            Preconditions.checkArgument(range.contains(cpuInVCPU), "Expected valid CPU shares in VCPU within range " + range);
+            return cpuInVCPU;
+        }).get();
+    }
 
+    protected static long parseMemoryShares(final @NonNull String[] args) {
+        return parseArg(args, true, "--memory", s -> {
+            long memoryInMB = Integer.parseInt(s);
+            Range<Long> range = Range.open(0L, Long.MAX_VALUE);
+            Preconditions.checkArgument(range.contains(memoryInMB), "Expected valid memory shares in MB within range " + range);
+            return memoryInMB;
+        }).get();
+    }
+
+    protected static SystemUtil parseProfiling(final @NonNull String[] args, long cpuSharesInVcpu, long memorySharesInMB) {
+        SystemUtil systemUtil = new SimulatedContainerSystemUtil(memorySharesInMB, cpuSharesInVcpu);
         Optional<Integer> secondsToProfile = parseArg(args,
                                                       false,
                                                       "--runProfiling",
                                                       Integer::parseInt);
         secondsToProfile.ifPresent(s -> {
             try (Profiler profiler = new Profiler(Duration.ofSeconds(s))) {
-                profiler.profile(new JavaSystemUtil());
+                profiler.profile(systemUtil);
             } catch (Throwable t) {
                 log.error("System profiling failed due to: {}", t);
                 System.exit(1);
             }
         });
+
+        return systemUtil;
     }
 
     protected static int parsePort(final @NonNull String[] args) {

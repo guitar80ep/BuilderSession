@@ -76,7 +76,7 @@ enum Unit {
     MEGABYTES = 66;
     GIGABYTES = 67;
 
-    CORES = 128;
+    VCPU = 128;
 }
 
 /*

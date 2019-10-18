@@ -7,7 +7,6 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 
 import org.build.session.jackson.proto.Unit;
-import org.builder.session.jackson.utils.JavaSystemUtil;
 import org.builder.session.jackson.utils.PIDConfig;
 import org.builder.session.jackson.utils.SystemUtil;
 
@@ -23,13 +22,8 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 public class CpuConsumer extends AbstractPidConsumer {
 
-    private static  SystemUtil SYSTEM = new JavaSystemUtil();
     private static final ImmutableSet<Unit> COMPUTE_UNITS = ImmutableSet.of(Unit.PERCENTAGE,
-                                                                            Unit.CORES);
-    private static final ImmutableMap<Unit, Range<Double>> UNIT_RANGE = ImmutableMap.<Unit, Range<Double>>builder()
-                                                                                    .put(Unit.PERCENTAGE, Range.open(0.0, 1.0))
-                                                                                    .put(Unit.CORES, Range.open(0.0, (double)SYSTEM.getTotalProcessors()))
-                                                                                    .build();
+                                                                            Unit.VCPU);
 
     public static final int SLEEP_TIME_IN_MILLIS = 100;
     public static final int COMPUTE_LOOP_COUNT = 200;
@@ -40,42 +34,29 @@ public class CpuConsumer extends AbstractPidConsumer {
     private final SystemUtil system;
     @NonNull
     private final ExecutorService executorService;
+    @NonNull
+    private final ImmutableMap<Unit, Double> max;
     @Getter
     private double targetPercentage;
 
-    public CpuConsumer(double targetPercentage, @NonNull PIDConfig pidConfig) {
+    public CpuConsumer(double targetPercentage, @NonNull SystemUtil system, @NonNull PIDConfig pidConfig) {
         super(pidConfig);
         Preconditions.checkArgument(0.0 <= targetPercentage && targetPercentage <= 1.0, "Must be between 0.0 and 1.0.");
         this.targetPercentage = targetPercentage;
-        this.system = SYSTEM;
+        this.system = system;
+        this.max = ImmutableMap.<Unit, Double>builder().put(Unit.PERCENTAGE, 1.0)
+                                                       .put(Unit.VCPU, (double)this.system.getCpuUnitsTotal() / (double)this.system.getUnitsPerProcessor())
+                                                       .build();
         this.executorService = Executors.newCachedThreadPool();
-    }
-
-    public CpuConsumer(double targetPercentage) {
-        this(targetPercentage, PIDConfig.builder()
-                                        .proportionFactor(0.075)
-                                        .derivativeFactor(0.100)
-                                        .integralFactor(0.035)
-                                        .build());
     }
 
     @Override
     public void setTargetPercentage (double value, @NonNull Unit unit) {
         Preconditions.checkArgument(COMPUTE_UNITS.contains(unit), "Must specify a compute unit, but got " + unit);
-        Preconditions.checkArgument(UNIT_RANGE.get(unit).contains(value),
-                                    "Must specify a value in range " + UNIT_RANGE.get(unit) + ", but got " + unit);
+        Preconditions.checkArgument(Range.open(0.0, max.get(unit)).contains(value),
+                                    "Must specify a value in max (0.0, " + max.get(unit) + "), but got " + unit);
         log.info("Setting CPU consumption from " + this.targetPercentage + " to " + value + " at " + unit.name());
-        switch (unit) {
-            case PERCENTAGE:
-                this.targetPercentage = value;
-                break;
-            case CORES:
-                this.targetPercentage = value / (double) system.getTotalProcessors();
-                break;
-                default:
-                    throw new IllegalArgumentException("Unexpected case.");
-        }
-
+        this.targetPercentage = value / max.get(unit);
     }
 
     @Override
