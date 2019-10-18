@@ -8,7 +8,7 @@ phases:
       python: 3.7
     commands:
       - echo install step...
-      - yum install -y maven
+      - apt-get install -y maven
       # Docker and Java are already installed on the system.
   pre_build:
     commands:
