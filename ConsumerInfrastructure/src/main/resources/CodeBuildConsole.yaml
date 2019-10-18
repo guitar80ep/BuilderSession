@@ -8,7 +8,7 @@ phases:
       python: 3.7
     commands:
       - echo install step...
-      - yum update -y maven
+      - yum update -y
       - yum install -y maven
       # Docker and Java are already installed on the system.
   pre_build:
@@ -18,8 +18,10 @@ phases:
   build:
     commands:
       - echo Building ConsumerConsole images on `date`
-      - echo Building JAR.
-      - cd ConsumerConsole
+      - cd ConsumerBackend
+      - mvn --version
+      - mvn install
+      - cd ../ConsumerConsole
       - mvn install
       - docker image build -t consumer-console
       - docker tag consumer-console:latest $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/consumer-console:latest
@@ -27,5 +29,5 @@ phases:
   post_build:
     commands:
       - echo Pushing the latest ConsumerConsole images to ECR
-      - docker push $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/consumer-console
+      - docker push $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/consumer-console:latest
       - echo Completed pushing the latest ConsumerConsole images to ECR

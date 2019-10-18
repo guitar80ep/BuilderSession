@@ -8,7 +8,7 @@ phases:
       python: 3.7
     commands:
       - echo install step...
-      - yum update -y maven
+      - yum update -y
       - yum install -y maven
       # Docker and Java are already installed on the system.
   pre_build:
@@ -18,8 +18,8 @@ phases:
   build:
     commands:
       - echo Building ConsumerBackend images on `date`
-      - echo Building JAR.
       - cd ConsumerBackend
+      - mvn --version
       - mvn install
       - docker image build -t consumer-backend
       - docker tag consumer-backend:latest $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/consumer-backend:latest
@@ -27,5 +27,5 @@ phases:
   post_build:
     commands:
       - echo Pushing the latest ConsumerBackend images to ECR
-      - docker push $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/consumer-backend
+      - docker push $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/consumer-backend:latest
       - echo Completed pushing the latest ConsumerBackend images to ECR
