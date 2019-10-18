@@ -26,11 +26,11 @@ Parameters:
     Description: The port for the backend server to listen on.
   ConsoleCpu:
     Type: Number
-    Default: 256
+    Default: 1024
     Description: The amount of CPU for the backend container.
   ConsoleMemory:
     Type: Number
-    Default: 512
+    Default: 1024
     Description: The amount of Memory for the backend container.
   BackendPort:
     Type: Number
@@ -38,11 +38,11 @@ Parameters:
     Description: The port for the backend server to listen on.
   BackendCpu:
     Type: Number
-    Default: 256
+    Default: 1024
     Description: The amount of CPU for the backend container.
   BackendMemory:
     Type: Number
-    Default: 512
+    Default: 1024
     Description: The amount of Memory for the backend container.
   BackendPidConfig:
     Type: String
@@ -63,7 +63,7 @@ Parameters:
       assigned to different paths on the load balancer.
   DesiredCount:
     Type: Number
-    Default: 3
+    Default: 0
     Description: How many copies of the service task to run
   ExecutionRole:
     Type: String
@@ -72,7 +72,7 @@ Parameters:
       behalf when starting containers such as pulling images from ECR.
   DesiredCapacity:
     Type: Number
-    Default: '3'
+    Default: 4
     Description: Number of EC2 instances to launch in your ECS cluster.
   ECSAMI:
     Description: AMI ID
