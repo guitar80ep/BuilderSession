@@ -4,6 +4,8 @@ phases:
   install:
     runtime-versions:
       java: corretto8
+      docker: 18
+      python: 3.7
     commands:
       - echo install step...
       - yum update -y maven
