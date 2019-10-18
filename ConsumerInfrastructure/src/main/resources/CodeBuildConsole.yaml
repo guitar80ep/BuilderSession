@@ -27,5 +27,5 @@ phases:
   post_build:
     commands:
       - echo Pushing the latest ConsumerConsole images to ECR
-      - docker push $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/consumer-console:latest
+      - docker push $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/consumer-console
       - echo Completed pushing the latest ConsumerConsole images to ECR
