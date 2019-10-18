@@ -22,7 +22,7 @@ phases:
       - mvn install
       - cd ../ConsumerConsole
       - mvn install
-      - docker image build -t consumer-console:latest
+      - docker image build -t consumer-console:latest .
       - docker tag consumer-console:latest $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/consumer-console:latest
       - echo Completed build of ConsumerConsole images on `date`
   post_build:
