@@ -17,7 +17,7 @@ import org.build.session.jackson.proto.Unit;
 import org.build.session.jackson.proto.UsageSpec;
 import org.builder.session.jackson.client.ConsumerBackendClient;
 import org.builder.session.jackson.dao.ServiceRegistry;
-import org.builder.session.jackson.dao.ServiceRegistryFake;
+import org.builder.session.jackson.dao.ServiceRegistryImpl;
 import org.builder.session.jackson.utils.PIDConfig;
 import org.builder.session.jackson.workflow.Workflow;
 import org.builder.session.jackson.workflow.utilize.Consumer;
@@ -49,7 +49,7 @@ public final class ConsumerBackendService extends ConsumerBackendServiceGrpc.Con
                                   @NonNull String serviceDiscoveryId) {
         this.host = host;
         this.port = port;
-        this.registry = new ServiceRegistryFake(serviceDiscoveryId, port);
+        this.registry = new ServiceRegistryImpl(serviceDiscoveryId);
 
         // Setup consumers...
         consumers = ImmutableMap.<Resource, Consumer>builder()
