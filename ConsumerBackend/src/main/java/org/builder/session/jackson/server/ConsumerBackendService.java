@@ -35,6 +35,8 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 public final class ConsumerBackendService extends ConsumerBackendServiceGrpc.ConsumerBackendServiceImplBase {
 
+    private static final double INITIAL_TARGET = 0.65;
+
     @NonNull
     private final Workflow workflow = new Workflow();
     @NonNull
@@ -56,8 +58,8 @@ public final class ConsumerBackendService extends ConsumerBackendServiceGrpc.Con
 
         // Setup consumers...
         consumers = ImmutableMap.<Resource, Consumer>builder()
-                .put(Resource.CPU, new CpuConsumer(0.0, pidConfig))
-                .put(Resource.MEMORY, new MemoryConsumer(0.0, pidConfig))
+                .put(Resource.CPU, new CpuConsumer(INITIAL_TARGET, pidConfig))
+                .put(Resource.MEMORY, new MemoryConsumer(INITIAL_TARGET, pidConfig))
                 .build();
         consumers.forEach((r, c) -> workflow.consume(c));
     }
@@ -73,7 +75,8 @@ public final class ConsumerBackendService extends ConsumerBackendServiceGrpc.Con
                 case ALL:
                     List<ServiceRegistry.Instance> hosts = registry.resolveHosts();
                     List<ConsumeResponse> responses = hosts.parallelStream()
-                                                           .map(h -> consume(h, ConsumeRequest.newBuilder(request)
+                                                           .map(h -> consume(h, ConsumeRequest.newBuilder()
+                                                                                              .addAllUsage(request.getUsageList())
                                                                                               //Convert to call a single actor instead of ALL.
                                                                                               .setCandidate(Candidate.SELF)
                                                                                               .build()))

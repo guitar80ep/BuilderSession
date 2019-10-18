@@ -31,6 +31,13 @@ public class JsonHelper {
         }
     }
 
+    public static String toSingleLine(@NonNull Message message) {
+        return message.toString()
+                      .replace("\n", " ")
+                      .replace("\r", " ")
+                      .replace("\t", " ");
+    }
+
     public static String format(@NonNull String jsonData) {
         JsonElement je = PARSER.parse(jsonData);
         return GSON.toJson(je);
