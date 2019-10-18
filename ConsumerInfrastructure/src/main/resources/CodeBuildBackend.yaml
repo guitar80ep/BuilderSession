@@ -6,27 +6,25 @@ phases:
       java: corretto8
     commands:
       - echo install step...
+      - yum update -y maven
       - yum install -y maven
+      - yum update -y docker
+      - yum install -y docker
   pre_build:
     commands:
       - echo logging in to AWS ECR...
       - $(aws ecr get-login --no-include-email --region us-west-2)
   build:
     commands:
-      - echo Building ConsumerService images on `date`
-      - echo Building ConsumerBackend JAR.
+      - echo Building ConsumerBackend images on `date`
+      - echo Building JAR.
       - cd ConsumerBackend
       - mvn install
       - docker image build -t consumer-backend
       - docker tag consumer-backend:latest $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/consumer-backend:latest
-      - cd ../ConsumerConsole
-      - mvn install
-      - docker image build -t consumer-console
-      - docker tag consumer-console:latest $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/consumer-console:latest
-      - echo Completed build of ConsumerService images on `date`
+      - echo Completed build of ConsumerBackend images on `date`
   post_build:
     commands:
-      - echo Pushing the latest images to ECR
+      - echo Pushing the latest ConsumerBackend images to ECR
       - docker push $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/consumer-backend:latest
-      - docker push $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/consumer-console:latest
-      - echo Completed pushing the latest images to ECR
+      - echo Completed pushing the latest ConsumerBackend images to ECR

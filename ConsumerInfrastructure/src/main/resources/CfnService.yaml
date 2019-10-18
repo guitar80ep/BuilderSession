@@ -64,7 +64,10 @@ Parameters:
   DesiredCount:
     Type: Number
     Default: 0
-    Description: How many copies of the service task to run
+    # Note that this should be ZERO the first time you create the CFN stack.
+    Description: How many copies of the service task to run. NOTE that this
+      should be zero the first time you run the CFN stack. This is necessary
+      to allow CodeBuild to generate the initial images.
   ExecutionRole:
     Type: String
     Default: ""
@@ -241,11 +244,11 @@ Resources:
   #                              #
   ################################
 
-  CodeBuildProject:
+  CodeBuildBackend:
     Type: AWS::CodeBuild::Project
     Properties:
-      Name: !Ref 'AWS::StackName'
-      Description: "A project to build ConsumerService launched on ECS."
+      Name: !Join ["", [ !Ref 'AWS::StackName', "-Backend"]]
+      Description: "A project to build ConsumerBackend launched on ECS."
       ServiceRole: !Ref 'CodeBuildRole'
       Artifacts:
         Type: NO_ARTIFACTS
@@ -258,7 +261,7 @@ Resources:
             Type: "PLAINTEXT"
             Value: !Ref 'AWS::AccountId'
       Source:
-        BuildSpec: "ConsumerInfrastructure/src/main/resources/CodeBuild.yaml"
+        BuildSpec: "ConsumerInfrastructure/src/main/resources/CodeBuildBackend.yaml"
         Type: GITHUB
         Location: "https://github.com/guitar80ep/BuilderSession"
       Triggers:
@@ -269,7 +272,38 @@ Resources:
       LogsConfig:
         CloudWatchLogs:
           GroupName: !Ref 'LogGroup'
-          StreamName: "Build"
+          StreamName: "Build-Backend"
+          Status: "ENABLED"
+
+  CodeBuildConsole:
+    Type: AWS::CodeBuild::Project
+    Properties:
+      Name: !Join ["", [ !Ref 'AWS::StackName', "-Console"]]
+      Description: "A project to build ConsumerConsole launched on ECS."
+      ServiceRole: !Ref 'CodeBuildRole'
+      Artifacts:
+        Type: NO_ARTIFACTS
+      Environment:
+        ComputeType: BUILD_GENERAL1_SMALL
+        Image: aws/codebuild/amazonlinux2-x86_64-standard:1.0
+        Type: LINUX_CONTAINER
+        EnvironmentVariables:
+          - Name: "AWS_ACCOUNT_ID"
+            Type: "PLAINTEXT"
+            Value: !Ref 'AWS::AccountId'
+      Source:
+        BuildSpec: "ConsumerInfrastructure/src/main/resources/CodeBuildConsole.yaml"
+        Type: GITHUB
+        Location: "https://github.com/guitar80ep/BuilderSession"
+      Triggers:
+        Webhook: true
+        FilterGroups:
+          - - Type: EVENT
+              Pattern: PUSH
+      LogsConfig:
+        CloudWatchLogs:
+          GroupName: !Ref 'LogGroup'
+          StreamName: "Build-Console"
           Status: "ENABLED"
 
 
