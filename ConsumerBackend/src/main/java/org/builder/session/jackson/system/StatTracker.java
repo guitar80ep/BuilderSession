@@ -1,4 +1,4 @@
-package org.builder.session.jackson.utils;
+package org.builder.session.jackson.system;
 
 import lombok.Getter;
 

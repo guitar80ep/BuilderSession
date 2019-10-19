@@ -1,6 +1,6 @@
 package org.builder.session.jackson.client.messages;
 
-import java.sql.Timestamp;
+import java.time.ZonedDateTime;
 import java.util.List;
 
 import com.google.gson.annotations.SerializedName;
@@ -11,7 +11,7 @@ import lombok.Data;
 @Data
 @Builder
 public class ContainerStats {
-    private final Timestamp read;
+    private final ZonedDateTime read;
     @SerializedName("memory_stats")
     private final MemoryStats memoryStats;
     @SerializedName("precpu_stats")

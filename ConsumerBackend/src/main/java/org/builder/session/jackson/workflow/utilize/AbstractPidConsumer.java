@@ -7,8 +7,6 @@ import java.util.HashSet;
 import java.util.Set;
 import java.util.concurrent.ConcurrentLinkedQueue;
 
-import org.builder.session.jackson.utils.PIDConfig;
-
 import lombok.NonNull;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -26,58 +24,58 @@ public abstract class AbstractPidConsumer implements Consumer {
     // We choose this because we can be more clear about the memory and performance implications as it grows.
     private final ConcurrentLinkedQueue<Load> loadSet = new ConcurrentLinkedQueue<>();
 
-    protected abstract long getConsumed();
-    protected abstract long getGoal();
-    protected abstract Load generateLoad();
-    protected int getLoadSize() {
+    protected abstract long getConsumed ();
+
+    protected abstract long getGoal ();
+
+    protected abstract Load generateLoad ();
+
+    protected int getLoadSize () {
         return loadSet.size();
     }
 
     @Override
     public final void consume () {
-        try {
-            Instant previousLog = Instant.now();
-            while (true) {
+        Instant previousLog = Instant.now();
+        while (true) {
+            try {
                 long goal = getGoal();
                 long consumed = getConsumed();
                 long currentError = goal - consumed;
                 double p = (currentError * config.getProportionFactor());
                 double d = ((currentError - previousError) * config.getDerivativeFactor());
                 double i = (totalError * config.getIntegralFactor());
-                long scale = (long)(p + i + d);
-                if(scale > 0) {
+                long scale = (long) (p + i + d);
+                if (scale > 0) {
                     loadSet.addAll(generateLoad(scale));
                 } else {
-                    for(int k = 0; k < -scale && !loadSet.isEmpty(); k++) {
+                    for (int k = 0; k < -scale && !loadSet.isEmpty(); k++) {
                         loadSet.poll();
                     }
 
-                    if(loadSet.size() == 0) {
+                    if (loadSet.size() == 0) {
                         //Reset total error if the loadSet has been emptied.
                         totalError = 0;
                     }
                 }
                 previousError = currentError;
                 totalError += currentError;
-                if(Duration.between(previousLog, Instant.now()).toMillis() >= DELAY_BETWEEN_LOGS.toMillis()) {
+                if (Duration.between(previousLog, Instant.now()).toMillis() >= DELAY_BETWEEN_LOGS.toMillis()) {
                     previousLog = Instant.now();
-                    log.debug("Status of {}: [Goal: {}, Consumed: {}, P: {}, D: {}, I: {} = S: {}]", new Object[] {
-                                      this.getClass().getSimpleName(), goal, consumed, p, d, i, scale
-                    });
+                    log.debug("Status of {}: [Goal: {}, Consumed: {}, P: {}, D: {}, I: {} = S: {}]",
+                              new Object[] { this.getClass().getSimpleName(), goal, consumed, p, d, i, scale });
                 }
 
                 Thread.sleep(config.getPace().toMillis());
+            } catch (Throwable t) {
+                log.error("Caught an exception while consuming resources for {}. Swallowing.", this.getClass().getSimpleName(), t);
             }
-        } catch (Throwable t) {
-            log.error("Caught an exception while consuming resources for {}. Swallowing.",
-                      this.getClass().getSimpleName(),
-                      t);
         }
     }
 
-    private final Set<Load> generateLoad(long scale) {
+    private final Set<Load> generateLoad (long scale) {
         Set<Load> generated = new HashSet<>();
-        for(long i = 0; i < scale; i++) {
+        for (long i = 0; i < scale; i++) {
             generated.add(generateLoad());
         }
         return generated;
@@ -91,7 +89,8 @@ public abstract class AbstractPidConsumer implements Consumer {
 
     @FunctionalInterface
     protected interface Load extends Closeable {
-        public void close();
+
+        public void close ();
     }
 
 }

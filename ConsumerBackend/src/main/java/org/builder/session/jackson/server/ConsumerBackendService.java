@@ -19,12 +19,12 @@ import org.build.session.jackson.proto.UsageSpec;
 import org.builder.session.jackson.client.ConsumerBackendClient;
 import org.builder.session.jackson.dao.ServiceRegistry;
 import org.builder.session.jackson.dao.ServiceRegistryImpl;
-import org.builder.session.jackson.utils.PIDConfig;
-import org.builder.session.jackson.utils.SystemUtil;
+import org.builder.session.jackson.system.SystemUtil;
 import org.builder.session.jackson.workflow.Workflow;
 import org.builder.session.jackson.workflow.utilize.Consumer;
 import org.builder.session.jackson.workflow.utilize.CpuConsumer;
 import org.builder.session.jackson.workflow.utilize.MemoryConsumer;
+import org.builder.session.jackson.workflow.utilize.PIDConfig;
 
 import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableMap;

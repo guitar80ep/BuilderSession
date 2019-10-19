@@ -1,6 +1,6 @@
 package org.builder.session.jackson.client.messages;
 
-import java.sql.Timestamp;
+import java.time.ZonedDateTime;
 import java.util.List;
 import java.util.Map;
 
@@ -31,9 +31,9 @@ public class ContainerMetadata {
     @SerializedName("Limits")
     private final Map<String, Long> limits;
     @SerializedName("CreatedAt")
-    private final Timestamp createdAt;
+    private final ZonedDateTime createdAt;
     @SerializedName("StartedAt")
-    private final Timestamp startedAt;
+    private final ZonedDateTime startedAt;
     @SerializedName("Type")
     private final String type;
     @SerializedName("Networks")

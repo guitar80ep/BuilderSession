@@ -1,6 +1,6 @@
 package org.builder.session.jackson.client.messages;
 
-import java.sql.Timestamp;
+import java.time.ZonedDateTime;
 import java.util.List;
 
 import com.google.gson.annotations.SerializedName;
@@ -27,9 +27,9 @@ public class TaskMetadata {
     @SerializedName("Containers")
     private final List<ContainerMetadata> containers;
     @SerializedName("PullStartedAt")
-    private final Timestamp pullStartedAt;
+    private final ZonedDateTime pullStartedAt;
     @SerializedName("PullStoppedAt")
-    private final Timestamp pullStoppedAt;
+    private final ZonedDateTime pullStoppedAt;
     @SerializedName("AvailabilityZone")
     private final String availabilityZone;
 }
