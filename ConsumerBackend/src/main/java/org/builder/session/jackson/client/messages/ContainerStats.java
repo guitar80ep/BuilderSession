@@ -21,7 +21,7 @@ public class ContainerStats {
 
     @Data
     @Builder
-    public class MemoryStats {
+    public static class MemoryStats {
         private final Stats stats;
         @SerializedName("max_usage")
         private final Long maxUsage;
@@ -32,7 +32,7 @@ public class ContainerStats {
         
         @Builder
         @Data
-        public class Stats {
+        public static class Stats {
             @SerializedName("active_anon")
             private Long activeAnon;
             @SerializedName("active_file")
@@ -101,7 +101,7 @@ public class ContainerStats {
 
     @Data
     @Builder
-    public class CpuStats {
+    public static class CpuStats {
         @SerializedName("cpu_usage")
         private final CpuUsageStats cpuUsage;
         @SerializedName("system_cpu_usage")
@@ -113,7 +113,7 @@ public class ContainerStats {
 
         @Data
         @Builder
-        public class CpuUsageStats {
+        public static class CpuUsageStats {
             @SerializedName("total_usage")
             private Long totalUsage;
             @SerializedName("percpu_usage")
@@ -126,7 +126,7 @@ public class ContainerStats {
 
         @Data
         @Builder
-        public class ThrottlingDataStats {
+        public static class ThrottlingDataStats {
             private Long periods;
             @SerializedName("throttled_periods")
             private Long throttledPeriods;

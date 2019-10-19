@@ -41,7 +41,7 @@ public class ContainerMetadata {
 
     @Data
     @Builder
-    public class Network {
+    public static class Network {
         @SerializedName("NetworkMode")
         private final String networkMode;
         @SerializedName("IPv4Addresses")
