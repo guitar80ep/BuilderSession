@@ -35,7 +35,7 @@ public class TaskMetadataClient {
 
     public TaskMetadataClient () {
         try {
-            String baseEndpoint = System.getenv("ENV_VAR");
+            String baseEndpoint = System.getenv(ENV_VAR);
             metadataEndpoint = new URL(baseEndpoint + "/task");
             taskStatsEndpoint = new URL(baseEndpoint + "/task/stats");
             containerStatsEndpoint = new URL(baseEndpoint + "/stats");
