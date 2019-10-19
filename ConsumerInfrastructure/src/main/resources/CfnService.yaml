@@ -7,11 +7,11 @@ Parameters:
     Description: The name of the service to launch.
   TaskCpu:
     Type: Number
-    Default: 1024
+    Default: 2048
     Description: The amount of CPU for the entire Task.
   TaskMemory:
     Type: Number
-    Default: 1024
+    Default: 2048
     Description: The amount of Memory for the entire Task.
   TaskNetworkMode:
     Type: String
@@ -65,13 +65,6 @@ Parameters:
     Description: The priority for the routing rule added to the load balancer.
       This only applies if your have multiple services which have been
       assigned to different paths on the load balancer.
-  DesiredCount:
-    Type: Number
-    Default: 0
-    # Note that this should be ZERO the first time you create the CFN stack.
-    Description: How many copies of the service task to run. NOTE that this
-      should be zero the first time you run the CFN stack. This is necessary
-      to allow CodeBuild to generate the initial images.
   ExecutionRole:
     Type: String
     Default: ""
@@ -160,14 +153,9 @@ Resources:
             - ContainerPort: !Ref 'BackendPort'
           EntryPoint:
             - "java"
-            - "-Xmx"
-            - !Ref 'BackendHeap'
+            - !Join [ "", ["-Xmx", !Ref 'BackendHeap', "M" ] ]
             - "-jar"
             - "/usr/local/ConsumerBackend/ConsumerBackend.jar"
-            - "--cpu"
-            - !Ref 'BackendCpu'
-            - "--memory"
-            - !Ref 'BackendHeap'
             - "--runProfiling"
             - "10"
             - "--port"
@@ -218,7 +206,9 @@ Resources:
         # We don't really care about availability for this dummy service.
         MaximumPercent: 200
         MinimumHealthyPercent: 0
-      DesiredCount: !Ref 'DesiredCount'
+      # We don't offer DesiredCount because Services in CFN can get stuck. It's
+      # easier to adjust the infrastructure afterwards since we don't care about availability.
+      DesiredCount: 0
       TaskDefinition: !Ref 'TaskDefinition'
       LoadBalancers:
         - ContainerName: ConsumerConsole
