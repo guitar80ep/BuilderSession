@@ -49,7 +49,7 @@ public class TaskMetadataClient {
                              .registerTypeAdapter(Instant.class, new ZonedDateTimeSerializer(DateTimeFormatter.ISO_DATE))
                              .create();
         } catch (MalformedURLException e) {
-            throw new IllegalArgumentException("The endpoint \"" + System.getenv("ENV_VAR") + "\" was invalid.");
+            throw new IllegalArgumentException("The endpoint \"" + System.getenv(ENV_VAR) + "\" was invalid.");
         }
     }
 
@@ -66,10 +66,11 @@ public class TaskMetadataClient {
     }
 
     private final <T> T getFromUrl(URL url, Class<T> clazz) {
+        String payload = getFromUrl(url);
         try {
-            return gson.fromJson(getFromUrl(url), clazz);
+            return gson.fromJson(payload, clazz);
         } catch (JsonSyntaxException e) {
-            throw new ConsumerInternalException("Failed to properly parse JSON payload from TaskMetadata endpoint.", e);
+            throw new ConsumerInternalException("Failed to properly parse JSON payload from TaskMetadata endpoint. Payload: " + payload, e);
         }
     }
 
