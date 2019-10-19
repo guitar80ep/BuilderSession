@@ -1,10 +1,14 @@
 package org.builder.session.jackson.workflow.utilize;
 
+import java.time.Duration;
 import java.time.Instant;
-import java.util.Random;
+import java.util.Collections;
+import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 import org.build.session.jackson.proto.Unit;
 import org.builder.session.jackson.utils.PIDConfig;
@@ -25,8 +29,9 @@ public class CpuConsumer extends AbstractPidConsumer {
     private static final ImmutableSet<Unit> COMPUTE_UNITS = ImmutableSet.of(Unit.PERCENTAGE,
                                                                             Unit.VCPU);
 
-    public static final int SLEEP_TIME_IN_MILLIS = 100;
-    public static final int COMPUTE_LOOP_COUNT = 200;
+    private static final int NUMBER_OF_WORKERS = 128;
+    private static final int SLEEP_TIME_IN_MILLIS = 25;
+    private static final long WORK_TIME_PER_LOAD_IN_NANOS = 5;
 
     @Getter
     private final String name = "CpuConsumer";
@@ -35,9 +40,12 @@ public class CpuConsumer extends AbstractPidConsumer {
     @NonNull
     private final ExecutorService executorService;
     @NonNull
+    private final List<Future> backgroundThreads;
+    @NonNull
     private final ImmutableMap<Unit, Double> max;
     @Getter
     private double targetPercentage;
+
 
     public CpuConsumer(double targetPercentage, @NonNull SystemUtil system, @NonNull PIDConfig pidConfig) {
         super(pidConfig);
@@ -45,9 +53,29 @@ public class CpuConsumer extends AbstractPidConsumer {
         this.targetPercentage = targetPercentage;
         this.system = system;
         this.max = ImmutableMap.<Unit, Double>builder().put(Unit.PERCENTAGE, 1.0)
-                                                       .put(Unit.VCPU, (double)this.system.getCpuUnitsTotal() / (double)this.system.getUnitsPerProcessor())
+                                                       .put(Unit.VCPU, (double)this.system.getCpuUnitsTotal())
                                                        .build();
+
+        //For CPU, our load is a series of threads run across all cores of our CPU.
         this.executorService = Executors.newCachedThreadPool();
+        this.backgroundThreads = Collections.unmodifiableList(
+                    IntStream.range(0, NUMBER_OF_WORKERS)
+                         .mapToObj(i -> executorService.submit(() -> {
+                                 while(true) {
+                                     try {
+                                         // Do some work...
+                                         Instant start = Instant.now();
+                                         long workTimeInNanos = this.getLoadSize() * WORK_TIME_PER_LOAD_IN_NANOS;
+                                         while (Duration.between(start, Instant.now()).toNanos() < workTimeInNanos) {
+                                             //Do nothing. As loop time approaches sleep time, we get 50% System CPU.
+                                         }
+                                         Thread.sleep(SLEEP_TIME_IN_MILLIS);
+                                     } catch (Throwable t) {
+                                         log.warn("Ran into exception in CPU consumption thread.", t);
+                                     }
+                                 }
+                 }))
+        .collect(Collectors.toList()));
     }
 
     @Override
@@ -61,8 +89,7 @@ public class CpuConsumer extends AbstractPidConsumer {
 
     @Override
     public double getActualPercentage() {
-        return (double) this.system.getCpuUnitsUtilized()
-                / (double) this.system.getCpuUnitsTotal();
+        return system.getCpuPercentage();
     }
 
     @Override
@@ -77,17 +104,12 @@ public class CpuConsumer extends AbstractPidConsumer {
 
     @Override
     protected Load generateLoad () {
-            Future future = executorService.submit(() -> {
-                double value = 1.0;
-                Random random = new Random(Instant.now().toEpochMilli());
-                while(true) {
-                    for(int k = 0; k < COMPUTE_LOOP_COUNT; k++) {
-                        value = (value * random.nextDouble()) + random.nextDouble() - random.nextDouble();
-                    }
-                    Thread.sleep(SLEEP_TIME_IN_MILLIS);
-                    value = 1.0;
-                }
-            });
-            return () -> future.cancel(true);
+        return () -> {};
+    }
+
+    @Override
+    public void close() {
+        executorService.shutdown();
+        super.close();
     }
 }

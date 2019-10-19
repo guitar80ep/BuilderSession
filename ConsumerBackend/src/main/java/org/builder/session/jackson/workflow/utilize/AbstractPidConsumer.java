@@ -4,9 +4,8 @@ import java.io.Closeable;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.HashSet;
-import java.util.LinkedList;
-import java.util.List;
 import java.util.Set;
+import java.util.concurrent.ConcurrentLinkedQueue;
 
 import org.builder.session.jackson.utils.PIDConfig;
 
@@ -24,11 +23,15 @@ public abstract class AbstractPidConsumer implements Consumer {
     private final PIDConfig config;
     private long previousError = 0;
     private long totalError = 0;
-    public final List<Load> loadSet = new LinkedList<>();
+    // We choose this because we can be more clear about the memory and performance implications as it grows.
+    private final ConcurrentLinkedQueue<Load> loadSet = new ConcurrentLinkedQueue<>();
 
     protected abstract long getConsumed();
     protected abstract long getGoal();
     protected abstract Load generateLoad();
+    protected int getLoadSize() {
+        return loadSet.size();
+    }
 
     @Override
     public final void consume () {
@@ -46,7 +49,7 @@ public abstract class AbstractPidConsumer implements Consumer {
                     loadSet.addAll(generateLoad(scale));
                 } else {
                     for(int k = 0; k < -scale && !loadSet.isEmpty(); k++) {
-                        loadSet.remove(loadSet.size() - 1).close();
+                        loadSet.poll();
                     }
 
                     if(loadSet.size() == 0) {
@@ -81,7 +84,7 @@ public abstract class AbstractPidConsumer implements Consumer {
     }
 
     @Override
-    public final void close () {
+    public void close () {
         loadSet.forEach(c -> c.close());
         loadSet.clear();
     }
