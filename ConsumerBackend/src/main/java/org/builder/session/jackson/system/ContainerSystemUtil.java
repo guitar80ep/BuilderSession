@@ -95,13 +95,18 @@ public class ContainerSystemUtil implements SystemUtil {
 
     public double getCpuPercentageOfSystemUsedByThisContainer() {
         ContainerStats stats = this.pollStats();
-        long systemUsage = stats.getCpuStats().getSystemCpuUsage()
-                - stats.getPreCpuStats().getSystemCpuUsage();
-        long containerUsage = stats.getCpuStats().getCpuUsage().getTotalUsage()
-                - stats.getPreCpuStats().getCpuUsage().getTotalUsage();
-        // This seems odd originally, but that's because CPU isn't a "measurable" resource. It's
-        // just how many cycles out of the total amount the CPU run were taken by this container.
-        return systemUsage == 0 ? 0.0 : (double)containerUsage / (double)systemUsage;
+        if(stats.getPreCpuStats() != null) {
+            long systemUsage = stats.getCpuStats().getSystemCpuUsage()
+                    - stats.getPreCpuStats().getSystemCpuUsage();
+            long containerUsage = stats.getCpuStats().getCpuUsage().getTotalUsage()
+                    - stats.getPreCpuStats().getCpuUsage().getTotalUsage();
+            // This seems odd originally, but that's because CPU isn't a "measurable" resource. It's
+            // just how many cycles out of the total amount the CPU run were taken by this container.
+            return systemUsage == 0 ? 0.0 : (double)containerUsage / (double)systemUsage;
+        } else {
+            log.warn("Previous CPU stats were still null on TaskMetadata endpoint. Resolving to 0.");
+            return 0.0;
+        }
     }
 
     public double getCpuPercentageAllocatedToThisContainer() {
