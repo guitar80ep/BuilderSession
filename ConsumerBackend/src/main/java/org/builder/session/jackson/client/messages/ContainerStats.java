@@ -17,9 +17,15 @@ public class ContainerStats {
     @SerializedName("memory_stats")
     private final MemoryStats memoryStats;
     @SerializedName("precpu_stats")
-    private final CpuStats preCpuStats;
+    private final CpuStats previousCpuStats;
     @SerializedName("cpu_stats")
     private final CpuStats cpuStats;
+
+    public boolean hasPreviousCpuStats() {
+        return this.previousCpuStats != null
+                && this.previousCpuStats.getOnlineCpus() != null
+                && this.previousCpuStats.getSystemCpuUsage() != null;
+    }
 
     @Data
     @Builder

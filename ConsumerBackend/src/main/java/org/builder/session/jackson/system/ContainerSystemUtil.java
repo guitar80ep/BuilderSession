@@ -22,7 +22,7 @@ public class ContainerSystemUtil implements SystemUtil {
     private static final String CONTAINER_NAME = "ConsumerBackend";
     private static final String MEMORY_LIMIT_KEY = "Memory";
     private static final String CPU_LIMIT_KEY = "CPU";
-    private static final Duration CACHE_TIME = Duration.ofMillis(250);
+    private static final Duration CACHE_TIME = Duration.ofMillis(200);
 
     private final Client<Void, TaskMetadata> metadataClient = TaskMetadataClient.createTaskMetadataClient(CACHE_TIME);
     private final Client<Void, ContainerStats> statsClient = TaskMetadataClient.createContainerStatsClient(CACHE_TIME);
@@ -95,11 +95,11 @@ public class ContainerSystemUtil implements SystemUtil {
 
     public double getCpuPercentageOfSystemUsedByThisContainer() {
         ContainerStats stats = this.pollStats();
-        if(stats.getPreCpuStats() != null) {
+        if(stats.hasPreviousCpuStats()) {
             long systemUsage = stats.getCpuStats().getSystemCpuUsage()
-                    - stats.getPreCpuStats().getSystemCpuUsage();
+                    - stats.getPreviousCpuStats().getSystemCpuUsage();
             long containerUsage = stats.getCpuStats().getCpuUsage().getTotalUsage()
-                    - stats.getPreCpuStats().getCpuUsage().getTotalUsage();
+                    - stats.getPreviousCpuStats().getCpuUsage().getTotalUsage();
             // This seems odd originally, but that's because CPU isn't a "measurable" resource. It's
             // just how many cycles out of the total amount the CPU run were taken by this container.
             return systemUsage == 0 ? 0.0 : (double)containerUsage / (double)systemUsage;
