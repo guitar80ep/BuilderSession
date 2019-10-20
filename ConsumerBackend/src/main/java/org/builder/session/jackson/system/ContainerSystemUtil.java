@@ -8,6 +8,7 @@ import org.builder.session.jackson.client.messages.ContainerMetadata;
 import org.builder.session.jackson.client.messages.ContainerStats;
 import org.builder.session.jackson.client.messages.TaskMetadata;
 import org.builder.session.jackson.exception.ConsumerDependencyException;
+import org.builder.session.jackson.utils.NoArgs;
 
 import lombok.extern.slf4j.Slf4j;
 
@@ -24,8 +25,8 @@ public class ContainerSystemUtil implements SystemUtil {
     private static final String CPU_LIMIT_KEY = "CPU";
     private static final Duration CACHE_TIME = Duration.ofMillis(200);
 
-    private final Client<Void, TaskMetadata> metadataClient = TaskMetadataClient.createTaskMetadataClient(CACHE_TIME);
-    private final Client<Void, ContainerStats> statsClient = TaskMetadataClient.createContainerStatsClient(CACHE_TIME);
+    private final Client<NoArgs, TaskMetadata> metadataClient = TaskMetadataClient.createTaskMetadataClient(CACHE_TIME);
+    private final Client<NoArgs, ContainerStats> statsClient = TaskMetadataClient.createContainerStatsClient(CACHE_TIME);
 
     public ContainerSystemUtil() {
         //Perform some simple validation for our system to confirm that it is properly setup.
@@ -45,7 +46,7 @@ public class ContainerSystemUtil implements SystemUtil {
      * Polls the latest ContainerStats from the Metadata endpoint and logs the result.
      */
     protected ContainerStats pollStats () {
-        ContainerStats stats = statsClient.call(null);
+        ContainerStats stats = statsClient.call(NoArgs.INSTANCE);
         log.debug("Pulled container stats: " + stats);
         return stats;
     }
@@ -54,7 +55,7 @@ public class ContainerSystemUtil implements SystemUtil {
      * Polls the latest ContainerStats from the Metadata endpoint and logs the result.
      */
     protected ContainerMetadata pollMetadata () {
-        TaskMetadata stats = metadataClient.call(null);
+        TaskMetadata stats = metadataClient.call(NoArgs.INSTANCE);
         log.debug("Pulled task metadata: " + stats);
         return stats.getContainers()
                     .stream()

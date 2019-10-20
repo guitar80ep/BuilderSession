@@ -12,6 +12,7 @@ import org.builder.session.jackson.client.messages.ContainerStats;
 import org.builder.session.jackson.client.messages.TaskMetadata;
 import org.builder.session.jackson.client.messages.TaskStats;
 import org.builder.session.jackson.serialize.ZonedDateTimeSerializer;
+import org.builder.session.jackson.utils.NoArgs;
 
 import com.google.gson.Gson;
 
@@ -24,7 +25,7 @@ import lombok.RequiredArgsConstructor;
  * https://docs.aws.amazon.com/AmazonECS/latest/developerguide/task-metadata-endpoint-v3.html
  */
 @RequiredArgsConstructor(access = AccessLevel.PROTECTED)
-public class TaskMetadataClient<T> implements Client<TaskMetadataClient.NoArgs, T> {
+public class TaskMetadataClient<T> implements Client<NoArgs, T> {
 
     private static final String BASE_ENDPOINT = System.getenv("ECS_CONTAINER_METADATA_URI");
     private static final DateTimeFormatter FORMAT = new DateTimeFormatterBuilder()
@@ -77,19 +78,5 @@ public class TaskMetadataClient<T> implements Client<TaskMetadataClient.NoArgs, 
     @Override
     public T call (NoArgs passAnything) {
         return this.client.call(endpoint);
-    }
-
-    @NonNull
-    public static class NoArgs {
-
-        @Override
-        public boolean equals (Object obj) {
-            return true;
-        }
-
-        @Override
-        public int hashCode () {
-            return 0;
-        }
     }
 }
