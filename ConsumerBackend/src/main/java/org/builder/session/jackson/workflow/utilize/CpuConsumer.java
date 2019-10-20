@@ -3,13 +3,12 @@ package org.builder.session.jackson.workflow.utilize;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Future;
-import java.util.concurrent.SynchronousQueue;
-import java.util.concurrent.ThreadPoolExecutor;
-import java.util.concurrent.TimeUnit;
+import java.util.concurrent.Executors;
 
 import org.build.session.jackson.proto.Unit;
+import org.builder.session.jackson.client.ecs.TaskMetadataClient;
 import org.builder.session.jackson.system.SystemUtil;
+import org.builder.session.jackson.utils.NoArgs;
 
 import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableMap;
@@ -41,17 +40,49 @@ public class CpuConsumer extends AbstractPidConsumer {
     private double targetPercentage;
 
 
-    public CpuConsumer(double targetPercentage, @NonNull SystemUtil system, @NonNull PIDConfig pidConfig) {
+    public CpuConsumer(double targetPercentage,
+                       @NonNull SystemUtil system,
+                       @NonNull PIDConfig pidConfig) {
         super(pidConfig);
+        long hostProcessorCount = TaskMetadataClient.createContainerStatsClient(Duration.ofMillis(1))
+                                                    .call(NoArgs.INSTANCE)
+                                                    .getCpuStats()
+                                                    .getOnlineCpus();
         Preconditions.checkArgument(0.0 <= targetPercentage && targetPercentage <= 1.0, "Must be between 0.0 and 1.0.");
+        Preconditions.checkArgument(hostProcessorCount > 0, "Processor count must be positive.");
         this.targetPercentage = targetPercentage;
         this.system = system;
         this.max = ImmutableMap.<Unit, Double>builder().put(Unit.PERCENTAGE, 1.0)
                                                        .put(Unit.VCPU, (double)this.system.getCpuUnitsTotal())
                                                        .build();
         //For CPU, our load is a series of threads run across all cores of our CPU.
-        this.executorService = new ThreadPoolExecutor(LOAD_FRACTION * 32, Integer.MAX_VALUE,
-                                                      5, TimeUnit.MINUTES, new SynchronousQueue<>());
+        this.executorService = Executors.newFixedThreadPool((int)hostProcessorCount);
+        for(int i = 0; i < hostProcessorCount; i++) {
+            final int threadIndex = i;
+            final boolean finalThread = threadIndex == (hostProcessorCount - 1);
+            this.executorService.submit(() -> {
+                while(true) {
+                    try {
+                        Instant start = Instant.now();
+                        long loadOnThisThread = this.getLoadSize() / threadIndex;
+                        if (finalThread) {
+                            loadOnThisThread += (this.getLoadSize() % threadIndex);
+                        }
+                        long sleepTimeInMillis = LOAD_FRACTION - loadOnThisThread;
+                        // Work for 1 ms, sleep for the rest of the time. This will lead to
+                        // significant context switching, but will allow a relatively slow ramp-up
+                        // to a value if tuned correctly. The idea is that each load would consume
+                        // like 0.1% of the CPU and allow for adjustments.
+                        while (Duration.between(start, Instant.now()).toMillis() < 1) { }
+                        if(sleepTimeInMillis >= 0) {
+                            Thread.sleep(sleepTimeInMillis);
+                        }
+                    } catch (Throwable t) {
+                        log.warn("Ran into exception in CPU consumption thread.", t);
+                    }
+                }
+            });
+        }
     }
 
     @Override
@@ -80,25 +111,7 @@ public class CpuConsumer extends AbstractPidConsumer {
 
     @Override
     protected Load generateLoad () {
-        Future loadRunner = executorService.submit(() -> {
-            while(true) {
-                try {
-                    Instant start = Instant.now();
-                    long sleepTimeInMillis = LOAD_FRACTION;
-                    // Work for 1 ms, sleep for the rest of the time. This will lead to
-                    // significant context switching, but will allow a relatively slow ramp-up
-                    // to a value if tuned correctly. The idea is that each load would consume
-                    // like 0.1% of the CPU and allow for adjustments.
-                    while (Duration.between(start, Instant.now()).toMillis() < 1) { }
-                    Thread.sleep(sleepTimeInMillis);
-                } catch (Throwable t) {
-                    log.warn("Ran into exception in CPU consumption thread.", t);
-                }
-            }
-        });
-
-        // Close the thread when the load is deleted.
-        return () -> loadRunner.cancel(true);
+        return () -> {};
     }
 
     @Override
