@@ -74,6 +74,21 @@ Parameters:
     Type: Number
     Default: 4
     Description: Number of EC2 instances to launch in your ECS cluster.
+  DesiredCount:
+    Type: Number
+    Default: 0
+    Description: Number of tasks to launch in your ECS cluster. Default is
+      zero to avoid risk of CFN slowness.
+  MinHealthyPercent:
+    Type: Number
+    Default: 50
+    Description: The minimum percentage of desired tasks to have running during
+      a deployment.
+  MaxHealthyPercent:
+    Type: Number
+    Default: 150
+    Description: The max percentage of desired tasks to have running during
+      a deployment.
   ECSAMI:
     Description: AMI ID
     Type: AWS::SSM::Parameter::Value<AWS::EC2::Image::Id>
@@ -81,12 +96,7 @@ Parameters:
   InstanceType:
     Description: EC2 instance type to launch in the AutoScaling Group.
     Type: String
-    Default: r3.xlarge
-    AllowedValues: [t2.micro, t2.small,
-                    t2.medium, t2.large,
-                    r3.large, r3.xlarge,
-                    r3.2xlarge]
-    ConstraintDescription: Please choose a valid instance type.
+    Default: c5.4xlarge
 
 Conditions:
   HasExecutionRole: !Not [ !Equals [!Ref 'ExecutionRole', ''] ]
@@ -203,12 +213,9 @@ Resources:
       ServiceName: !Ref 'ServiceName'
       Cluster: !Ref 'ECSCluster'
       DeploymentConfiguration:
-        # We don't really care about availability for this dummy service.
-        MaximumPercent: 200
-        MinimumHealthyPercent: 0
-      # We don't offer DesiredCount because Services in CFN can get stuck. It's
-      # easier to adjust the infrastructure afterwards since we don't care about availability.
-      DesiredCount: 0
+        MaximumPercent: !Ref 'MaxHealthyPercent'
+        MinimumHealthyPercent: !Ref 'MinHealthyPercent'
+      DesiredCount: !Ref 'DesiredCount'
       TaskDefinition: !Ref 'TaskDefinition'
       LoadBalancers:
         - ContainerName: ConsumerConsole

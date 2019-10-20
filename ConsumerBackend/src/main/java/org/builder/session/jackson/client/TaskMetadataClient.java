@@ -24,7 +24,7 @@ import lombok.RequiredArgsConstructor;
  * https://docs.aws.amazon.com/AmazonECS/latest/developerguide/task-metadata-endpoint-v3.html
  */
 @RequiredArgsConstructor(access = AccessLevel.PROTECTED)
-public class TaskMetadataClient<T> implements Client<Void, T> {
+public class TaskMetadataClient<T> implements Client<TaskMetadataClient.NoArgs, T> {
 
     private static final String BASE_ENDPOINT = System.getenv("ECS_CONTAINER_METADATA_URI");
     private static final DateTimeFormatter FORMAT = new DateTimeFormatterBuilder()
@@ -39,19 +39,19 @@ public class TaskMetadataClient<T> implements Client<Void, T> {
                                                      .registerTypeAdapter(ZonedDateTime.class, new ZonedDateTimeSerializer(FORMAT))
                                                      .create();
 
-    public static Client<Void, TaskMetadata> createTaskMetadataClient(Duration cacheTime) {
+    public static Client<NoArgs, TaskMetadata> createTaskMetadataClient(Duration cacheTime) {
         return new TaskMetadataClient<TaskMetadata>(BASE_ENDPOINT + "/task",
                                                     TaskMetadata.class,
                                                     cacheTime);
     }
 
-    public static Client<Void, TaskStats> createTaskStatsClient(Duration cacheTime) {
+    public static Client<NoArgs, TaskStats> createTaskStatsClient(Duration cacheTime) {
         return new TaskMetadataClient<TaskStats>(BASE_ENDPOINT + "/task/stats",
                                                  TaskStats.class,
                                                  cacheTime);
     }
 
-    public static Client<Void, ContainerStats> createContainerStatsClient(Duration cacheTime) {
+    public static Client<NoArgs, ContainerStats> createContainerStatsClient(Duration cacheTime) {
         return new TaskMetadataClient<ContainerStats>(BASE_ENDPOINT + "/stats",
                                                       ContainerStats.class,
                                                       cacheTime);
@@ -75,7 +75,21 @@ public class TaskMetadataClient<T> implements Client<Void, T> {
     }
 
     @Override
-    public T call (Void onlyPassNull) {
+    public T call (NoArgs passAnything) {
         return this.client.call(endpoint);
+    }
+
+    @NonNull
+    public static class NoArgs {
+
+        @Override
+        public boolean equals (Object obj) {
+            return true;
+        }
+
+        @Override
+        public int hashCode () {
+            return 0;
+        }
     }
 }
