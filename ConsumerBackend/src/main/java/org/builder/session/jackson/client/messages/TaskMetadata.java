@@ -2,6 +2,7 @@ package org.builder.session.jackson.client.messages;
 
 import java.time.ZonedDateTime;
 import java.util.List;
+import java.util.Map;
 
 import com.google.gson.annotations.SerializedName;
 
@@ -26,6 +27,8 @@ public class TaskMetadata {
     private final String knownStatus;
     @SerializedName("Containers")
     private final List<ContainerMetadata> containers;
+    @SerializedName("Limits")
+    private final Map<String, Long> limits;
     @SerializedName("PullStartedAt")
     private final ZonedDateTime pullStartedAt;
     @SerializedName("PullStoppedAt")

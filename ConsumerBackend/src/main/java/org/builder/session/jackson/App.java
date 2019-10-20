@@ -10,9 +10,9 @@ import java.util.function.Function;
 import org.apache.logging.log4j.Level;
 import org.builder.session.jackson.server.Server;
 import org.builder.session.jackson.server.ServerImpl;
-import org.builder.session.jackson.system.ContainerSystemUtil;
 import org.builder.session.jackson.system.Profiler;
 import org.builder.session.jackson.system.SystemUtil;
+import org.builder.session.jackson.system.TaskSystemUtil;
 import org.builder.session.jackson.utils.LoggingInitializer;
 import org.builder.session.jackson.workflow.utilize.PIDConfig;
 
@@ -80,7 +80,7 @@ public class App
     }
 
     protected static SystemUtil parseProfiling(final @NonNull String[] args) {
-        SystemUtil systemUtil = new ContainerSystemUtil();
+        SystemUtil systemUtil = new TaskSystemUtil();
         Optional<Integer> secondsToProfile = parseArg(args,
                                                       false,
                                                       "--runProfiling",
