@@ -26,7 +26,7 @@ public class TaskSystemUtil implements SystemUtil {
     private static final String MEMORY_LIMIT_KEY = "Memory";
     private static final String CPU_LIMIT_KEY = "CPU";
     private static final Duration CACHE_TIME = Duration.ofMillis(200);
-    private static final Duration WAIT_TIME = Duration.ofSeconds(20);
+    private static final Duration WAIT_TIME = Duration.ofSeconds(30);
 
     private final Client<NoArgs, TaskMetadata> metadataClient = TaskMetadataClient.createTaskMetadataClient(CACHE_TIME);
     private final Client<NoArgs, TaskStats> statsClient = TaskMetadataClient.createTaskStatsClient(CACHE_TIME);
@@ -37,29 +37,28 @@ public class TaskSystemUtil implements SystemUtil {
             TaskStats initialStats = pollStats();
             TaskMetadata initialMetadata = pollMetadata();
             Thread.sleep(WAIT_TIME.toMillis());
-            long reservedContainerCpu = getTaskLimit(CPU_LIMIT_KEY);
-            long reservedContainerMemory = getTaskLimit(MEMORY_LIMIT_KEY);
+            long reservedContainerCpu = getCpuUnitsTotal();
+            long reservedContainerMemory = getTotalMemory(MemoryUnit.BYTES);
         } catch (Throwable t) {
             throw new ConsumerInternalException("Failed while starting up TaskSystemUtil.", t);
         }
     }
 
-    public long getTaskLimit(String limitKey) {
+    protected long getTaskLimit(String limitKey) {
+        //NOTE: We don't use Task limits because of the complication it can add.
+        //      For example, the CPU is listed in processors instead of VCPUs at
+        //      the moment. Instead, sum containers.
         TaskMetadata taskMetadata = this.pollMetadata();
-        if(taskMetadata.getLimits().containsKey(limitKey)) {
-            return taskMetadata.getLimits().get(limitKey);
-        } else {
-            List<Long> limits = taskMetadata.getContainers()
-                                            .stream()
-                                            .map(c -> c.getLimits())
-                                            .map(map -> map.get(limitKey))
-                                            .collect(Collectors.toList());
-            if(limits.stream().anyMatch(l -> l == null)) {
-                String error = "Container monitoring cannot be performed without a hard container reservation limit on " + limitKey + ".";
-                throw new IllegalArgumentException(error);
-            }
-            return limits.stream().mapToLong(l -> l).sum();
+        List<Long> limits = taskMetadata.getContainers()
+                                        .stream()
+                                        .map(c -> c.getLimits())
+                                        .map(map -> map.get(limitKey))
+                                        .collect(Collectors.toList());
+        if(limits.stream().anyMatch(l -> l == null)) {
+            String error = "Container monitoring cannot be performed without a hard container reservation limit on " + limitKey + ".";
+            throw new IllegalArgumentException(error);
         }
+        return limits.stream().mapToLong(l -> l).sum();
     }
 
     /**
@@ -110,7 +109,7 @@ public class TaskSystemUtil implements SystemUtil {
                 (double)getTotalMemory(MemoryUnit.BYTES);
     }
 
-    public double getCpuPercentageOfSystemUsedByThisContainer() {
+    public double getCpuPercentageOfSystemUsedByThisTask() {
         TaskStats stats = this.pollStats();
         if(stats.getContainers().values().stream().allMatch(t -> t != null && t.hasPreviousCpuStats())) {
             long systemUsage = stats.getContainers().values().stream().mapToLong( c -> c.getCpuStats().getSystemCpuUsage()).sum()
@@ -126,7 +125,7 @@ public class TaskSystemUtil implements SystemUtil {
         }
     }
 
-    public double getCpuPercentageAllocatedToThisContainer() {
+    public double getCpuPercentageAllocatedToThisTask() {
         long processors = this.pollStats()
                               .getContainers()
                               .values()
@@ -134,14 +133,14 @@ public class TaskSystemUtil implements SystemUtil {
                               .findFirst().get()
                               .getCpuStats()
                               .getOnlineCpus();
-        return (double)this.pollMetadata().getLimits().get(CPU_LIMIT_KEY)
+        return (double)getCpuUnitsTotal()
                 / (double)(processors * getUnitsPerProcessor());
     }
 
     public double getCpuPercentage() {
         // If the we used 30% of the system, but we were allocated 60%: we have used 50% of our space.
-        return getCpuPercentageOfSystemUsedByThisContainer()
-                / getCpuPercentageAllocatedToThisContainer();
+        return getCpuPercentageOfSystemUsedByThisTask()
+                / getCpuPercentageAllocatedToThisTask();
     }
 
     public long getCpuUnitsTotal() {

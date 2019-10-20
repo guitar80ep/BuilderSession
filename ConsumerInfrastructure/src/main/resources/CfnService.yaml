@@ -206,9 +206,6 @@ Resources:
               Value: "127.0.0.1"
             - Name: CONSUMER_BACKEND_PORT
               Value: !Ref 'BackendPort'
-          DependsOn:
-            - ContainerName: ConsumerBackend
-              Condition: START
           LogConfiguration:
             LogDriver: awslogs
             Options:
