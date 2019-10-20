@@ -113,7 +113,7 @@ public class App
             Preconditions.checkArgument(s.endsWith("]"), "List should ends with \"[\"");
             s = s.substring(1, s.length() - 1);
             String[] listArgs = s.split(",");
-            Preconditions.checkArgument(listArgs.length == 4, "Expected exactly 4 value for PIDConfig list, but got " + listArgs);
+            Preconditions.checkArgument(listArgs.length == 5, "Expected exactly 5 value for PIDConfig list, but got " + listArgs);
             long paceInMillis = Integer.parseInt(listArgs[0].trim());
             double p = Double.parseDouble(listArgs[1].trim());
             double d = Double.parseDouble(listArgs[2].trim());
