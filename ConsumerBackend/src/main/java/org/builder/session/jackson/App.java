@@ -38,7 +38,7 @@ public class App
                          "ConsoleAppender",
                          "FileAppender")
               .addLogger("org.builder.session.jackson.system",
-                         Level.INFO,
+                         Level.DEBUG,
                          false,
                          "ConsoleAppender",
                          "FileAppender")

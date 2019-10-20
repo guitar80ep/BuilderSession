@@ -26,19 +26,19 @@ public class ContainerSystemUtil implements SystemUtil {
     private static final String MEMORY_LIMIT_KEY = "Memory";
     private static final String CPU_LIMIT_KEY = "CPU";
     private static final Duration CACHE_TIME = Duration.ofMillis(200);
-    private static final Duration WAIT_TIME = Duration.ofSeconds(15);
+    private static final Duration WAIT_TIME = Duration.ofSeconds(20);
 
     private final Client<NoArgs, TaskMetadata> metadataClient = TaskMetadataClient.createTaskMetadataClient(CACHE_TIME);
     private final Client<NoArgs, ContainerStats> statsClient = TaskMetadataClient.createContainerStatsClient(CACHE_TIME);
 
     public ContainerSystemUtil() {
         try {
-            Thread.sleep(WAIT_TIME.toMillis());
             //Perform some simple validation for our system to confirm that it is properly setup.
             ContainerStats initialStats = pollStats();
             ContainerMetadata initialMetadata = pollMetadata();
-            Long reservedContainerCpu = initialMetadata.getLimits().get(CPU_LIMIT_KEY);
-            Long reservedContainerMemory = initialMetadata.getLimits().get(MEMORY_LIMIT_KEY);
+            Thread.sleep(WAIT_TIME.toMillis());
+            Long reservedContainerCpu = pollMetadata().getLimits().get(CPU_LIMIT_KEY);
+            Long reservedContainerMemory = pollMetadata().getLimits().get(MEMORY_LIMIT_KEY);
             if (reservedContainerCpu == null || reservedContainerCpu <= 0) {
                 throw new IllegalArgumentException("Container monitoring cannot be performed without a hard container reservation limit on CPU.");
             }
