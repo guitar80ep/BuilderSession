@@ -200,7 +200,7 @@
                     <archive>
                         <manifest>
                             <addClasspath>true</addClasspath>
-                            <mainClass>org.builder.session.jackson.App</mainClass>
+                            <mainClass>org.builder.session.jackson.Application</mainClass>
                         </manifest>
                     </archive>
                 </configuration>
@@ -220,7 +220,7 @@
                 <configuration>
                     <archive>
                         <manifest>
-                            <mainClass>org.builder.session.jackson.App</mainClass>
+                            <mainClass>org.builder.session.jackson.Application</mainClass>
                         </manifest>
                     </archive>
                     <descriptorRefs>

@@ -17,6 +17,7 @@ import com.google.gson.JsonSyntaxException;
 import lombok.AllArgsConstructor;
 import lombok.NonNull;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
 /**
  * A client meant to "GET" JSON values from an arbitrary HTTP endpoint
@@ -24,6 +25,7 @@ import lombok.RequiredArgsConstructor;
  */
 @RequiredArgsConstructor
 @AllArgsConstructor
+@Slf4j
 public class JsonHttpClient<T> implements Client<URL, T> {
 
     @NonNull
@@ -34,12 +36,15 @@ public class JsonHttpClient<T> implements Client<URL, T> {
     private Duration readTimeout = Duration.ofSeconds(1);
 
     public T call (URL url) {
-        return getFromUrl(url, clazz);
+        T result = getFromUrl(url, clazz);
+        log.debug("Received payload from {}. Result: {}", url, result);
+        return result;
     }
 
     private final <T> T getFromUrl(URL url, Class<T> clazz) {
         String payload = getFromUrl(url);
         try {
+            log.debug("Received payload from {}. Deserializing: {}", url, payload);
             return this.serializer.fromJson(payload, clazz);
         } catch (JsonSyntaxException e) {
             throw new ConsumerInternalException("Failed to properly parse JSON payload from TaskMetadata endpoint. Payload: " + payload, e);

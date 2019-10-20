@@ -23,29 +23,13 @@ import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
-public class App 
+public class Application
 {
     public static void main(String[] args) {
 
-        //Initialize logging...
-        LoggingInitializer logger = new LoggingInitializer();
-        logger.addPatternLayout("MainLayout", "%d{HH:mm:ss.SSS} [%t] %-5level %logger{36} - %msg%n")
-              .addConsoleAppender("ConsoleAppender", "MainLayout")
-              .addFileAppender("FileAppender", "logs/application.log", "MainLayout")
-              .addRootLogger(Level.WARN)
-              .addLogger("org.builder.session", Level.DEBUG,
-                         false,
-                         "ConsoleAppender",
-                         "FileAppender")
-              .addLogger("org.builder.session.jackson.system",
-                         Level.DEBUG,
-                         false,
-                         "ConsoleAppender",
-                         "FileAppender")
-              .build();
-        log.info("Logging is initialized!");
+        initializeLogging();
 
-        //Gather port information...
+        //Gather input information...
         Preconditions.checkArgument(args.length >= 6,
                                     "Expected at least 6 arguments to this application " +
                                             "[--port, --pidConfig, --serviceDiscoveryId].");
@@ -73,6 +57,31 @@ public class App
 
         log.info( "Server shutdown is complete." );
         System.exit(0);
+    }
+
+    private static void initializeLogging () {
+        //Initialize logging...
+        LoggingInitializer logger = new LoggingInitializer();
+        logger.addPatternLayout("MainLayout", "%d{HH:mm:ss.SSS} [%t] %-5level %logger{36} - %msg%n")
+              .addConsoleAppender("ConsoleAppender", "MainLayout")
+              .addFileAppender("FileAppender", "logs/application.log", "MainLayout")
+              .addRootLogger(Level.WARN)
+              .addLogger("org.builder.session", Level.DEBUG,
+                         false,
+                         "ConsoleAppender",
+                         "FileAppender")
+              .addLogger("org.builder.session.jackson.system",
+                         Level.DEBUG,
+                         false,
+                         "ConsoleAppender",
+                         "FileAppender")
+              .addLogger("org.builder.session.jackson.client",
+                         Level.DEBUG,
+                         false,
+                         "ConsoleAppender",
+                         "FileAppender")
+              .build();
+        log.info("Logging is initialized!");
     }
 
     protected static boolean shouldStop(BufferedReader reader) throws IOException {
