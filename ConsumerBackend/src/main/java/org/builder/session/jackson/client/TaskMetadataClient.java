@@ -7,7 +7,6 @@ import java.net.HttpURLConnection;
 import java.net.MalformedURLException;
 import java.net.ProtocolException;
 import java.net.URL;
-import java.time.Instant;
 import java.time.format.DateTimeFormatter;
 
 import org.builder.session.jackson.client.messages.ContainerStats;
@@ -46,7 +45,7 @@ public class TaskMetadataClient {
                              .enableComplexMapKeySerialization()
                              // Set date format for example: 2015-01-08T22:57:31.547920715Z
                              // GSON doesn't have nanosecond precision be default, so we add it.
-                             .registerTypeAdapter(Instant.class, new ZonedDateTimeSerializer(DateTimeFormatter.ISO_DATE))
+                             .registerTypeAdapter(ZonedDateTimeSerializer.class, new ZonedDateTimeSerializer(DateTimeFormatter.ISO_DATE))
                              .create();
         } catch (MalformedURLException e) {
             throw new IllegalArgumentException("The endpoint \"" + System.getenv(ENV_VAR) + "\" was invalid.");

@@ -12,6 +12,8 @@ import lombok.Data;
 @Builder
 public class ContainerStats {
     private final ZonedDateTime read;
+    @SerializedName("preread")
+    private final ZonedDateTime preRead;
     @SerializedName("memory_stats")
     private final MemoryStats memoryStats;
     @SerializedName("precpu_stats")
