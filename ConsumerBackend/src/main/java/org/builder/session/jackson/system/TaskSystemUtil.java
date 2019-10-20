@@ -34,9 +34,9 @@ public class TaskSystemUtil implements SystemUtil {
     public TaskSystemUtil () {
         try {
             //Perform some simple validation for our system to confirm that it is properly setup.
+            Thread.sleep(WAIT_TIME.toMillis());
             TaskStats initialStats = pollStats();
             TaskMetadata initialMetadata = pollMetadata();
-            Thread.sleep(WAIT_TIME.toMillis());
             long reservedContainerCpu = getCpuUnitsTotal();
             long reservedContainerMemory = getTotalMemory(MemoryUnit.BYTES);
         } catch (Throwable t) {

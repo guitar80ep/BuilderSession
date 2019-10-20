@@ -44,9 +44,12 @@ public class TaskStats {
                 Map<String, ContainerStats> containers = new HashMap<>();
                 while (in.hasNext()) {
                     String name = in.nextName();
-                    ContainerStats stats = in.peek().equals(JsonToken.NULL) ?
-                                           null : adapter.read(in);
-                    containers.put(name, stats);
+                    if(in.peek().equals(JsonToken.NULL)) {
+                        in.nextNull();
+                        containers.put(name, null);
+                    } else {
+                        containers.put(name, adapter.read(in));
+                    }
                 }
                 in.endObject();
                 return TaskStats.builder()
