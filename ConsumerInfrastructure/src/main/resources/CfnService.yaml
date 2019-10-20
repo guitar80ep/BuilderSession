@@ -127,9 +127,7 @@ Mappings:
     Backend:
       ProfileTimeInSeconds:
         10
-      WorkerSleepTimeInNanos:
-        2000000
-      WorkerRunTimePerLoadInNanos:
+      CpuLoadFraction:
         1000
       MemoryPerLoadInBytes:
         100000
@@ -198,11 +196,9 @@ Resources:
           Environment:
             - Name: CONSUMER_WORKER_COUNT
               Value: !Ref 'ConsumerWorkerCount'
-            - Name: WORKER_SLEEP_TIME_IN_NANOS
-              Value: !FindInMap ['ConsumerConfig', 'Backend', 'WorkerSleepTimeInNanos']
-            - Name: CPU_TIME_PER_LOAD_IN_NANOS
-              Value: !FindInMap ['ConsumerConfig', 'Backend', 'WorkerRunTimePerLoadInNanos']
-            - Name: MEMORY_PER_LOAD_IN_BYTES
+            - Name: CONSUMER_CPU_LOAD_FRACTION
+              Value: !FindInMap ['ConsumerConfig', 'Backend', 'CpuLoadFraction']
+            - Name: CONSUMER_MEMORY_PER_LOAD_IN_BYTES
               Value: !FindInMap ['ConsumerConfig', 'Backend', 'MemoryPerLoadInBytes']
           LogConfiguration:
             LogDriver: awslogs

@@ -21,7 +21,7 @@ public class MemoryConsumer extends AbstractPidConsumer {
                                                                            Unit.MEGABYTES,
                                                                            Unit.GIGABYTES);
     public static final int MEMORY_PER_LOAD_IN_BYTES =
-            Integer.parseInt(System.getenv("MEMORY_PER_LOAD_IN_BYTES"));
+            Integer.parseInt(System.getenv("CONSUMER_MEMORY_PER_LOAD_IN_BYTES"));
 
     @Getter
     private final String name = "MemoryConsumer";

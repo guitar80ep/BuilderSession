@@ -2,14 +2,11 @@ package org.builder.session.jackson.workflow.utilize;
 
 import java.time.Duration;
 import java.time.Instant;
-import java.util.Collections;
-import java.util.List;
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
+import java.util.concurrent.SynchronousQueue;
+import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
-import java.util.stream.Collectors;
-import java.util.stream.IntStream;
 
 import org.build.session.jackson.proto.Unit;
 import org.builder.session.jackson.system.SystemUtil;
@@ -29,12 +26,8 @@ public class CpuConsumer extends AbstractPidConsumer {
     private static final ImmutableSet<Unit> COMPUTE_UNITS = ImmutableSet.of(Unit.PERCENTAGE,
                                                                             Unit.VCPU);
 
-    private static final int CONSUMER_WORKER_COUNT =
-            Integer.parseInt(System.getenv("CONSUMER_WORKER_COUNT"));
-    private static final int WORKER_SLEEP_TIME_IN_NANOS =
-            Integer.parseInt(System.getenv("WORKER_SLEEP_TIME_IN_NANOS"));
-    private static final long CPU_TIME_PER_LOAD_IN_NANOS =
-            Long.parseLong(System.getenv("CPU_TIME_PER_LOAD_IN_NANOS"));
+    private static final int LOAD_FRACTION =
+            Integer.parseInt(System.getenv("CONSUMER_LOAD_FRACTION"));
 
     @Getter
     private final String name = "CpuConsumer";
@@ -42,8 +35,6 @@ public class CpuConsumer extends AbstractPidConsumer {
     private final SystemUtil system;
     @NonNull
     private final ExecutorService executorService;
-    @NonNull
-    private final List<Future> backgroundThreads;
     @NonNull
     private final ImmutableMap<Unit, Double> max;
     @Getter
@@ -58,29 +49,9 @@ public class CpuConsumer extends AbstractPidConsumer {
         this.max = ImmutableMap.<Unit, Double>builder().put(Unit.PERCENTAGE, 1.0)
                                                        .put(Unit.VCPU, (double)this.system.getCpuUnitsTotal())
                                                        .build();
-
         //For CPU, our load is a series of threads run across all cores of our CPU.
-        this.executorService = Executors.newCachedThreadPool();
-        this.backgroundThreads = Collections.unmodifiableList(
-                    IntStream.range(0, CONSUMER_WORKER_COUNT)
-                         .mapToObj(i -> executorService.submit(() -> {
-                             long sleepMillis = TimeUnit.NANOSECONDS.toMillis(WORKER_SLEEP_TIME_IN_NANOS);
-                             int sleepNanos = (int)(WORKER_SLEEP_TIME_IN_NANOS % TimeUnit.MILLISECONDS.toNanos(1));
-                             while(true) {
-                                 try {
-                                     // Do some work...
-                                     Instant start = Instant.now();
-                                     long workTimeInNanos = this.getLoadSize() * CPU_TIME_PER_LOAD_IN_NANOS;
-                                     while (Duration.between(start, Instant.now()).toNanos() < workTimeInNanos) {
-                                         //Do nothing. As loop time approaches sleep time, we get 50% System CPU.
-                                     }
-                                     Thread.sleep(sleepMillis, sleepNanos);
-                                 } catch (Throwable t) {
-                                     log.warn("Ran into exception in CPU consumption thread.", t);
-                                 }
-                             }
-                 }))
-        .collect(Collectors.toList()));
+        this.executorService = new ThreadPoolExecutor(LOAD_FRACTION * 32, Integer.MAX_VALUE,
+                                                      5, TimeUnit.MINUTES, new SynchronousQueue<>());
     }
 
     @Override
@@ -109,7 +80,25 @@ public class CpuConsumer extends AbstractPidConsumer {
 
     @Override
     protected Load generateLoad () {
-        return () -> {};
+        Future loadRunner = executorService.submit(() -> {
+            while(true) {
+                try {
+                    Instant start = Instant.now();
+                    long sleepTimeInMillis = LOAD_FRACTION;
+                    // Work for 1 ms, sleep for the rest of the time. This will lead to
+                    // significant context switching, but will allow a relatively slow ramp-up
+                    // to a value if tuned correctly. The idea is that each load would consume
+                    // like 0.1% of the CPU and allow for adjustments.
+                    while (Duration.between(start, Instant.now()).toMillis() < 1) { }
+                    Thread.sleep(sleepTimeInMillis);
+                } catch (Throwable t) {
+                    log.warn("Ran into exception in CPU consumption thread.", t);
+                }
+            }
+        });
+
+        // Close the thread when the load is deleted.
+        return () -> loadRunner.cancel(true);
     }
 
     @Override
