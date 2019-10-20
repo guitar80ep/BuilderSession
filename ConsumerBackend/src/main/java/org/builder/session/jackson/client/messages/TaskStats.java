@@ -6,7 +6,6 @@ import java.util.HashMap;
 import java.util.Map;
 
 import com.google.common.collect.ImmutableMap;
-import com.google.gson.Gson;
 import com.google.gson.TypeAdapter;
 import com.google.gson.annotations.JsonAdapter;
 import com.google.gson.stream.JsonReader;
@@ -31,10 +30,9 @@ public class TaskStats {
         private final TypeAdapter<ContainerStats> adapter;
 
         public Serializer() {
-            adapter = new Gson().newBuilder()
-                                .enableComplexMapKeySerialization()
-                                .create()
-                                .getAdapter(ContainerStats.class);
+            adapter = MetadataConstants.createGson()
+                                       .create()
+                                       .getAdapter(ContainerStats.class);
         }
 
         @Override

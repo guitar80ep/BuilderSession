@@ -3,15 +3,11 @@ package org.builder.session.jackson.client;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.time.Duration;
-import java.time.ZonedDateTime;
-import java.time.format.DateTimeFormatter;
-import java.time.format.DateTimeFormatterBuilder;
-import java.time.temporal.ChronoField;
 
 import org.builder.session.jackson.client.messages.ContainerStats;
+import org.builder.session.jackson.client.messages.MetadataConstants;
 import org.builder.session.jackson.client.messages.TaskMetadata;
 import org.builder.session.jackson.client.messages.TaskStats;
-import org.builder.session.jackson.serialize.ZonedDateTimeSerializer;
 import org.builder.session.jackson.utils.NoArgs;
 
 import com.google.gson.Gson;
@@ -28,17 +24,7 @@ import lombok.RequiredArgsConstructor;
 public class TaskMetadataClient<T> implements Client<NoArgs, T> {
 
     private static final String BASE_ENDPOINT = System.getenv("ECS_CONTAINER_METADATA_URI");
-    private static final DateTimeFormatter FORMAT = new DateTimeFormatterBuilder()
-            .appendPattern("yyyy-MM-dd'T'HH:mm:ss")
-            .appendFraction(ChronoField.NANO_OF_SECOND, 0, 9, true)
-            .appendZoneId()
-            .toFormatter();
-    private static final Gson SERIALIZER = new Gson().newBuilder()
-                                                     .enableComplexMapKeySerialization()
-                                                     // Set date format for example: 2015-01-08T22:57:31.547920715Z
-                                                     // GSON doesn't have nanosecond precision be default, so we add it.
-                                                     .registerTypeAdapter(ZonedDateTime.class, new ZonedDateTimeSerializer(FORMAT))
-                                                     .create();
+    private static final Gson SERIALIZER = MetadataConstants.createGson().create();
 
     public static Client<NoArgs, TaskMetadata> createTaskMetadataClient(Duration cacheTime) {
         return new TaskMetadataClient<TaskMetadata>(BASE_ENDPOINT + "/task",
