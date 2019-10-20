@@ -52,7 +52,7 @@ Parameters:
     Type: Number
     Default: 64
     Description: The number of threads that consume CPU resources on each
-      ConsumerBackend.
+      ConsumerBackend. A good estimate is two times the number of cores.
   BackendPidConfig:
     Type: String
     Default: "[500,0.075,0.100,0.02,0.95]"
@@ -120,6 +120,22 @@ Mappings:
       CIDR: '10.0.0.0/24'
     PublicTwo:
       CIDR: '10.0.1.0/24'
+  ConsumerConfig:
+    Service:
+      HealthCheckGracePeriod:
+        30
+    Backend:
+      ProfileTimeInSeconds:
+        10
+      WorkerSleepTimeInNanos:
+        2000000
+      WorkerRunTimePerLoadInNanos:
+        1000
+      MemoryPerLoadInBytes:
+        100000
+    Console:
+      ConsumerBackendIP:
+        "127.0.0.1"
 
 Resources:
 
@@ -172,7 +188,7 @@ Resources:
             - "-jar"
             - "/usr/local/ConsumerBackend/ConsumerBackend.jar"
             - "--runProfiling"
-            - "10"
+            - !FindInMap ['ConsumerConfig', 'Backend', 'ProfileTimeInSeconds']
             - "--port"
             - !Ref 'BackendPort'
             - "--serviceDiscoveryId"
@@ -183,11 +199,11 @@ Resources:
             - Name: CONSUMER_WORKER_COUNT
               Value: !Ref 'ConsumerWorkerCount'
             - Name: WORKER_SLEEP_TIME_IN_NANOS
-              Value: 2000000
+              Value: !FindInMap ['ConsumerConfig', 'Backend', 'WorkerSleepTimeInNanos']
             - Name: CPU_TIME_PER_LOAD_IN_NANOS
-              Value: 2500000
+              Value: !FindInMap ['ConsumerConfig', 'Backend', 'WorkerRunTimePerLoadInNanos']
             - Name: MEMORY_PER_LOAD_IN_BYTES
-              Value: 100000
+              Value: !FindInMap ['ConsumerConfig', 'Backend', 'MemoryPerLoadInBytes']
           LogConfiguration:
             LogDriver: awslogs
             Options:
@@ -203,7 +219,7 @@ Resources:
             - ContainerPort: !Ref 'ConsolePort'
           Environment:
             - Name: CONSUMER_BACKEND_IP
-              Value: "127.0.0.1"
+              Value: !FindInMap ['ConsumerConfig', 'Console', 'ConsumerBackendIP']
             - Name: CONSUMER_BACKEND_PORT
               Value: !Ref 'BackendPort'
           LogConfiguration:
@@ -236,7 +252,7 @@ Resources:
         - RegistryArn: !GetAtt DiscoveryService.Arn
           ContainerName: "ConsumerBackend"
           ContainerPort: !Ref 'BackendPort'
-      HealthCheckGracePeriodSeconds: 30
+      HealthCheckGracePeriodSeconds: !FindInMap ['ConsumerConfig', 'Service', 'HealthCheckGracePeriod']
 
 
 

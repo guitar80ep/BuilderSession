@@ -4,7 +4,7 @@ import java.time.Duration;
 import java.util.Optional;
 
 import org.builder.session.jackson.client.Client;
-import org.builder.session.jackson.client.TaskMetadataClient;
+import org.builder.session.jackson.client.ecs.TaskMetadataClient;
 import org.builder.session.jackson.client.messages.ContainerMetadata;
 import org.builder.session.jackson.client.messages.ContainerStats;
 import org.builder.session.jackson.client.messages.TaskMetadata;

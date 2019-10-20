@@ -1,4 +1,4 @@
-package org.builder.session.jackson.client;
+package org.builder.session.jackson.client.general;
 
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -8,6 +8,7 @@ import java.net.ProtocolException;
 import java.net.URL;
 import java.time.Duration;
 
+import org.builder.session.jackson.client.Client;
 import org.builder.session.jackson.exception.ConsumerDependencyException;
 import org.builder.session.jackson.exception.ConsumerInternalException;
 

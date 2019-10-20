@@ -6,7 +6,7 @@ import java.util.Optional;
 import java.util.stream.Collectors;
 
 import org.builder.session.jackson.client.Client;
-import org.builder.session.jackson.client.TaskMetadataClient;
+import org.builder.session.jackson.client.ecs.TaskMetadataClient;
 import org.builder.session.jackson.client.messages.TaskMetadata;
 import org.builder.session.jackson.client.messages.TaskStats;
 import org.builder.session.jackson.exception.ConsumerDependencyException;

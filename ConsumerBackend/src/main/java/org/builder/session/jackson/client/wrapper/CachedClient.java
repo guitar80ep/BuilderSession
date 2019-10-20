@@ -1,7 +1,9 @@
-package org.builder.session.jackson.client;
+package org.builder.session.jackson.client.wrapper;
 
 import java.time.Duration;
 import java.util.concurrent.TimeUnit;
+
+import org.builder.session.jackson.client.Client;
 
 import com.google.common.cache.Cache;
 import com.google.common.cache.CacheBuilder;

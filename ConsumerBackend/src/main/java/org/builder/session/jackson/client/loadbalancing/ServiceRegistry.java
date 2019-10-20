@@ -1,4 +1,4 @@
-package org.builder.session.jackson.dao;
+package org.builder.session.jackson.client.loadbalancing;
 
 import java.time.Instant;
 import java.util.List;

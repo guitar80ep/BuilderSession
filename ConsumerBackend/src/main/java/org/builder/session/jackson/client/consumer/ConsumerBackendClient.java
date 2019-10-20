@@ -1,10 +1,11 @@
-package org.builder.session.jackson.client;
+package org.builder.session.jackson.client.consumer;
 
 import java.util.UUID;
 
 import org.build.session.jackson.proto.ConsumeRequest;
 import org.build.session.jackson.proto.ConsumeResponse;
 import org.build.session.jackson.proto.ConsumerBackendServiceGrpc;
+import org.builder.session.jackson.client.Client;
 import org.builder.session.jackson.utils.JsonHelper;
 
 import io.grpc.ManagedChannel;

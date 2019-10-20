@@ -1,13 +1,16 @@
-package org.builder.session.jackson.client;
+package org.builder.session.jackson.client.ecs;
 
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.time.Duration;
 
+import org.builder.session.jackson.client.Client;
+import org.builder.session.jackson.client.general.JsonHttpClient;
 import org.builder.session.jackson.client.messages.ContainerStats;
 import org.builder.session.jackson.client.messages.MetadataConstants;
 import org.builder.session.jackson.client.messages.TaskMetadata;
 import org.builder.session.jackson.client.messages.TaskStats;
+import org.builder.session.jackson.client.wrapper.CachedClient;
 import org.builder.session.jackson.utils.NoArgs;
 
 import com.google.gson.Gson;
