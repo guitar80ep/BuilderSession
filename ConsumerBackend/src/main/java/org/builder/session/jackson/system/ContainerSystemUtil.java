@@ -1,5 +1,8 @@
 package org.builder.session.jackson.system;
 
+import java.time.Duration;
+
+import org.builder.session.jackson.client.Client;
 import org.builder.session.jackson.client.TaskMetadataClient;
 import org.builder.session.jackson.client.messages.ContainerMetadata;
 import org.builder.session.jackson.client.messages.ContainerStats;
@@ -19,8 +22,10 @@ public class ContainerSystemUtil implements SystemUtil {
     private static final String CONTAINER_NAME = "ConsumerBackend";
     private static final String MEMORY_LIMIT_KEY = "Memory";
     private static final String CPU_LIMIT_KEY = "CPU";
+    private static final Duration CACHE_TIME = Duration.ofMillis(250);
 
-    private final TaskMetadataClient client = new TaskMetadataClient();
+    private final Client<Void, TaskMetadata> metadataClient = TaskMetadataClient.createTaskMetadataClient(CACHE_TIME);
+    private final Client<Void, ContainerStats> statsClient = TaskMetadataClient.createContainerStatsClient(CACHE_TIME);
 
     public ContainerSystemUtil() {
         //Perform some simple validation for our system to confirm that it is properly setup.
@@ -40,7 +45,7 @@ public class ContainerSystemUtil implements SystemUtil {
      * Polls the latest ContainerStats from the Metadata endpoint and logs the result.
      */
     protected ContainerStats pollStats () {
-        ContainerStats stats = client.getContainerStats();
+        ContainerStats stats = statsClient.call(null);
         log.debug("Pulled container stats: " + stats);
         return stats;
     }
@@ -49,7 +54,7 @@ public class ContainerSystemUtil implements SystemUtil {
      * Polls the latest ContainerStats from the Metadata endpoint and logs the result.
      */
     protected ContainerMetadata pollMetadata () {
-        TaskMetadata stats = client.getMetadata();
+        TaskMetadata stats = metadataClient.call(null);
         log.debug("Pulled task metadata: " + stats);
         return stats.getContainers()
                     .stream()
