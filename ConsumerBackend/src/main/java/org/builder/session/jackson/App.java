@@ -33,8 +33,12 @@ public class App
               .addConsoleAppender("ConsoleAppender", "MainLayout")
               .addFileAppender("FileAppender", "logs/application.log", "MainLayout")
               .addRootLogger(Level.WARN)
-              .addLogger("org.builder.session",
-                         Level.DEBUG,
+              .addLogger("org.builder.session", Level.DEBUG,
+                         false,
+                         "ConsoleAppender",
+                         "FileAppender")
+              .addLogger("org.builder.session.jackson.system",
+                         Level.INFO,
                          false,
                          "ConsoleAppender",
                          "FileAppender")

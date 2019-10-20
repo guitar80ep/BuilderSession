@@ -15,7 +15,7 @@ import lombok.extern.slf4j.Slf4j;
 @RequiredArgsConstructor
 public abstract class AbstractPidConsumer implements Consumer {
 
-    public static final Duration DELAY_BETWEEN_LOGS = Duration.ofSeconds(30);
+    public static final Duration DELAY_BETWEEN_LOGS = Duration.ofSeconds(1);
 
     @NonNull
     private final PIDConfig config;
@@ -62,8 +62,13 @@ public abstract class AbstractPidConsumer implements Consumer {
                 totalError += currentError;
                 if (Duration.between(previousLog, Instant.now()).toMillis() >= DELAY_BETWEEN_LOGS.toMillis()) {
                     previousLog = Instant.now();
-                    log.debug("Status of {}: [Goal: {}, Consumed: {}, P: {}, D: {}, I: {} = S: {}]",
-                              new Object[] { this.getClass().getSimpleName(), goal, consumed, p, d, i, scale });
+                    log.debug("Status of {}: [Goal: {}, Consumed: {}, Load: {}, P: {}, D: {}, I: {} = S: {}]",
+                              new Object[] { this.getClass().getSimpleName(),
+                                             goal,
+                                             consumed,
+                                             this.getLoadSize(),
+                                             p, d, i,
+                                             scale });
                 }
 
                 Thread.sleep(config.getPace().toMillis());
