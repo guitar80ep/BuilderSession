@@ -5,10 +5,12 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 
+import com.google.common.collect.ImmutableMap;
 import com.google.gson.Gson;
 import com.google.gson.TypeAdapter;
 import com.google.gson.annotations.JsonAdapter;
 import com.google.gson.stream.JsonReader;
+import com.google.gson.stream.JsonToken;
 import com.google.gson.stream.JsonWriter;
 
 import lombok.Builder;
@@ -37,17 +39,22 @@ public class TaskStats {
 
         @Override
         public TaskStats read (JsonReader in) throws IOException {
-            in.beginObject();
-            Map<String, ContainerStats> containers = new HashMap<>();
-            while(in.hasNext()) {
-                String name = in.nextName();
-                ContainerStats stats = adapter.read(in);
-                containers.put(name, stats);
+            if(in.peek().equals(JsonToken.NULL)) {
+                return new TaskStats(ImmutableMap.of());
+            } else {
+                in.beginObject();
+                Map<String, ContainerStats> containers = new HashMap<>();
+                while (in.hasNext()) {
+                    String name = in.nextName();
+                    ContainerStats stats = in.peek().equals(JsonToken.NULL) ?
+                                           null : adapter.read(in);
+                    containers.put(name, stats);
+                }
+                in.endObject();
+                return TaskStats.builder()
+                                .containers(Collections.unmodifiableMap(containers))
+                                .build();
             }
-            in.endObject();
-            return TaskStats.builder()
-                            .containers(Collections.unmodifiableMap(containers))
-                            .build();
         }
 
         @Override
