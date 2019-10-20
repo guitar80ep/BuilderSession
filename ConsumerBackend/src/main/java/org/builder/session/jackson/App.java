@@ -118,15 +118,18 @@ public class App
             double p = Double.parseDouble(listArgs[1].trim());
             double d = Double.parseDouble(listArgs[2].trim());
             double i = Double.parseDouble(listArgs[3].trim());
+            double decay = Double.parseDouble(listArgs[3].trim());
             Range<Double> range = Range.open(0.0, 10.0);
             Preconditions.checkArgument(range.contains(p), "Expected valid P-Value within range " + range);
             Preconditions.checkArgument(range.contains(d), "Expected valid D-Value within range " + range);
             Preconditions.checkArgument(range.contains(i), "Expected valid I-Value within range " + range);
+            Preconditions.checkArgument(range.contains(decay), "Expected valid Decay within range " + range);
             return PIDConfig.builder()
                             .pace(Duration.ofMillis(paceInMillis))
                             .proportionFactor(p)
                             .derivativeFactor(d)
                             .integralFactor(i)
+                            .integralDecay(decay)
                             .build();
         }).get();
     }

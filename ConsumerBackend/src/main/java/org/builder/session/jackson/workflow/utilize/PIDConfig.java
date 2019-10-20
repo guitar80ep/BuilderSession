@@ -16,4 +16,5 @@ public class PIDConfig {
     private double proportionFactor = 0.333;
     private double derivativeFactor = 0.333;
     private double integralFactor = 0.333;
+    private double integralDecay = 0.95;
 }

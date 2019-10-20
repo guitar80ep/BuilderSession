@@ -55,8 +55,8 @@ Parameters:
       ConsumerBackend.
   BackendPidConfig:
     Type: String
-    Default: "[500,0.075,0.100,0.02]"
-    Description: The PID config specified as [PaceInMillis, P,I,D] (ex. [5,1.0,2.0,3.0])
+    Default: "[500,0.075,0.100,0.02,0.95]"
+    Description: The PID config specified as [PaceInMillis,P,I,D,Decay] (ex. [5,1.0,2.0,3.0,0.95])
       used to stabilize resource consumption.
   Path:
     Type: String

@@ -5,4 +5,4 @@ FROM openjdk:8u212-jre-alpine3.9
 MAINTAINER john_jackson
 RUN mkdir -p /usr/local/ConsumerBackend
 COPY ./target/ConsumerBackend.jar /usr/local/ConsumerBackend
-ENTRYPOINT ["java", "-jar", "/usr/local/ConsumerBackend/ConsumerBackend.jar", "--runProfiling", "30", "--port", "2581", "--serviceDiscoveryId", "someSpecialId123", "--pid", "[250,0.075,0.100,0.035]"]
+ENTRYPOINT ["java", "-jar", "/usr/local/ConsumerBackend/ConsumerBackend.jar", "--runProfiling", "30", "--port", "2581", "--serviceDiscoveryId", "someSpecialId123", "--pid", "[250,0.075,0.100,0.035,0.95]"]

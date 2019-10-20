@@ -59,6 +59,7 @@ public abstract class AbstractPidConsumer implements Consumer {
                     }
                 }
                 previousError = currentError;
+                totalError *= config.getIntegralDecay();
                 totalError += currentError;
                 if (Duration.between(previousLog, Instant.now()).toMillis() >= DELAY_BETWEEN_LOGS.toMillis()) {
                     previousLog = Instant.now();
