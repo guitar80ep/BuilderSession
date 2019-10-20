@@ -27,7 +27,7 @@ public class CpuConsumer extends AbstractPidConsumer {
                                                                             Unit.VCPU);
 
     private static final int LOAD_FRACTION =
-            Integer.parseInt(System.getenv("CONSUMER_LOAD_FRACTION"));
+            Integer.parseInt(System.getenv("CONSUMER_CPU_LOAD_FRACTION"));
 
     @Getter
     private final String name = "CpuConsumer";

@@ -48,11 +48,6 @@ Parameters:
     Type: Number
     Default: 924
     Description: The amount of Memory in MB for the backend container.
-  ConsumerWorkerCount:
-    Type: Number
-    Default: 64
-    Description: The number of threads that consume CPU resources on each
-      ConsumerBackend. A good estimate is two times the number of cores.
   BackendPidConfig:
     Type: String
     Default: "[500,0.075,0.100,0.02,0.95]"
@@ -194,8 +189,6 @@ Resources:
             - "--pid"
             - !Ref 'BackendPidConfig'
           Environment:
-            - Name: CONSUMER_WORKER_COUNT
-              Value: !Ref 'ConsumerWorkerCount'
             - Name: CONSUMER_CPU_LOAD_FRACTION
               Value: !FindInMap ['ConsumerConfig', 'Backend', 'CpuLoadFraction']
             - Name: CONSUMER_MEMORY_PER_LOAD_IN_BYTES
