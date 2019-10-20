@@ -10,6 +10,7 @@ import org.builder.session.jackson.client.TaskMetadataClient;
 import org.builder.session.jackson.client.messages.TaskMetadata;
 import org.builder.session.jackson.client.messages.TaskStats;
 import org.builder.session.jackson.exception.ConsumerDependencyException;
+import org.builder.session.jackson.exception.ConsumerInternalException;
 import org.builder.session.jackson.utils.NoArgs;
 
 import lombok.extern.slf4j.Slf4j;
@@ -25,16 +26,22 @@ public class TaskSystemUtil implements SystemUtil {
     private static final String MEMORY_LIMIT_KEY = "Memory";
     private static final String CPU_LIMIT_KEY = "CPU";
     private static final Duration CACHE_TIME = Duration.ofMillis(200);
+    private static final Duration WAIT_TIME = Duration.ofSeconds(15);
 
     private final Client<NoArgs, TaskMetadata> metadataClient = TaskMetadataClient.createTaskMetadataClient(CACHE_TIME);
     private final Client<NoArgs, TaskStats> statsClient = TaskMetadataClient.createTaskStatsClient(CACHE_TIME);
 
     public TaskSystemUtil () {
-        //Perform some simple validation for our system to confirm that it is properly setup.
-        TaskStats initialStats = pollStats();
-        TaskMetadata initialMetadata = pollMetadata();
-        long reservedContainerCpu = getTaskLimit(CPU_LIMIT_KEY);
-        long reservedContainerMemory = getTaskLimit(MEMORY_LIMIT_KEY);
+        try {
+            //Perform some simple validation for our system to confirm that it is properly setup.
+            Thread.sleep(WAIT_TIME.toMillis());
+            TaskStats initialStats = pollStats();
+            TaskMetadata initialMetadata = pollMetadata();
+            long reservedContainerCpu = getTaskLimit(CPU_LIMIT_KEY);
+            long reservedContainerMemory = getTaskLimit(MEMORY_LIMIT_KEY);
+        } catch (Throwable t) {
+            throw new ConsumerInternalException("Failed while starting up TaskSystemUtil.", t);
+        }
     }
 
     public long getTaskLimit(String limitKey) {
@@ -104,7 +111,7 @@ public class TaskSystemUtil implements SystemUtil {
 
     public double getCpuPercentageOfSystemUsedByThisContainer() {
         TaskStats stats = this.pollStats();
-        if(stats.getContainers().stream().allMatch(t -> t.hasPreviousCpuStats())) {
+        if(stats.getContainers().stream().allMatch(t -> t != null && t.hasPreviousCpuStats())) {
             long systemUsage = stats.getContainers().stream().mapToLong( c -> c.getCpuStats().getSystemCpuUsage()).sum()
                     - stats.getContainers().stream().mapToLong( c -> c.getPreviousCpuStats().getSystemCpuUsage()).sum();
             long containerUsage = stats.getContainers().stream().mapToLong( c -> c.getCpuStats().getCpuUsage().getTotalUsage()).sum()
