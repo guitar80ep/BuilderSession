@@ -35,7 +35,10 @@ public class CachedClient<INPUT, OUTPUT> implements Client<INPUT, OUTPUT> {
         OUTPUT output = this.cache.getIfPresent(input);
         if(output == null) {
             output = this.client.call(input);
-            this.cache.put(input, output);
+            //We can only add values that are non-null
+            if(output != null) {
+                this.cache.put(input, output);
+            }
         }
         return output;
     }

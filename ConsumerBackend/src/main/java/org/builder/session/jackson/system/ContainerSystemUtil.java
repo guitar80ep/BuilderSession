@@ -1,6 +1,7 @@
 package org.builder.session.jackson.system;
 
 import java.time.Duration;
+import java.util.Optional;
 
 import org.builder.session.jackson.client.Client;
 import org.builder.session.jackson.client.TaskMetadataClient;
@@ -46,7 +47,8 @@ public class ContainerSystemUtil implements SystemUtil {
      * Polls the latest ContainerStats from the Metadata endpoint and logs the result.
      */
     protected ContainerStats pollStats () {
-        ContainerStats stats = statsClient.call(NoArgs.INSTANCE);
+        ContainerStats stats = Optional.ofNullable(statsClient.call(NoArgs.INSTANCE))
+                                       .orElseThrow(() -> new ConsumerDependencyException("Couldn't gather stats from endpoint."));
         log.debug("Pulled container stats: " + stats);
         return stats;
     }
@@ -55,7 +57,8 @@ public class ContainerSystemUtil implements SystemUtil {
      * Polls the latest ContainerStats from the Metadata endpoint and logs the result.
      */
     protected ContainerMetadata pollMetadata () {
-        TaskMetadata stats = metadataClient.call(NoArgs.INSTANCE);
+        TaskMetadata stats = Optional.ofNullable(metadataClient.call(NoArgs.INSTANCE))
+                                     .orElseThrow(() -> new ConsumerDependencyException("Couldn't gather metadata from endpoint."));
         log.debug("Pulled task metadata: " + stats);
         return stats.getContainers()
                     .stream()

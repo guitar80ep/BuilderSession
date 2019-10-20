@@ -5,6 +5,10 @@ package org.builder.session.jackson.exception;
  */
 public class ConsumerDependencyException extends RuntimeException {
 
+    public ConsumerDependencyException (String message) {
+        super(message);
+    }
+
     public ConsumerDependencyException (String message, Throwable t) {
         super(message, t);
     }
