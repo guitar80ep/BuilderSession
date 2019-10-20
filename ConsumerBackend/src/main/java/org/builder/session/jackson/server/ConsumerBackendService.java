@@ -36,7 +36,7 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 public final class ConsumerBackendService extends ConsumerBackendServiceGrpc.ConsumerBackendServiceImplBase {
 
-    private static final double INITIAL_TARGET = 0.65;
+    private static final double INITIAL_TARGET = 0.33;
 
     @NonNull
     private final Workflow workflow = new Workflow();

@@ -48,6 +48,11 @@ Parameters:
     Type: Number
     Default: 924
     Description: The amount of Memory in MB for the backend container.
+  ConsumerWorkerCount:
+    Type: Number
+    Default: 64
+    Description: The number of threads that consume CPU resources on each
+      ConsumerBackend.
   BackendPidConfig:
     Type: String
     Default: "[500,0.075,0.100,0.02]"
@@ -174,6 +179,15 @@ Resources:
             - !GetAtt 'DiscoveryService.Id'
             - "--pid"
             - !Ref 'BackendPidConfig'
+          Environment:
+            - Name: CONSUMER_WORKER_COUNT
+              Value: !Ref 'ConsumerWorkerCount'
+            - Name: WORKER_SLEEP_TIME_IN_NANOS
+              Value: 500000
+            - Name: CPU_TIME_PER_LOAD_IN_NANOS
+              Value: 1000
+            - Name: MEMORY_PER_LOAD_IN_BYTES
+              Value: 1024
           LogConfiguration:
             LogDriver: awslogs
             Options:

@@ -28,9 +28,12 @@ public class CpuConsumer extends AbstractPidConsumer {
     private static final ImmutableSet<Unit> COMPUTE_UNITS = ImmutableSet.of(Unit.PERCENTAGE,
                                                                             Unit.VCPU);
 
-    private static final int NUMBER_OF_WORKERS = 128;
-    private static final int SLEEP_TIME_IN_MILLIS = 25;
-    private static final long WORK_TIME_PER_LOAD_IN_NANOS = 5;
+    private static final int CONSUMER_WORKER_COUNT =
+            Integer.parseInt(System.getenv("CONSUMER_WORKER_COUNT"));
+    private static final int WORKER_SLEEP_TIME_IN_NANOS =
+            Integer.parseInt(System.getenv("WORKER_SLEEP_TIME_IN_NANOS"));
+    private static final long CPU_TIME_PER_LOAD_IN_NANOS =
+            Long.parseLong(System.getenv("CPU_TIME_PER_LOAD_IN_NANOS"));
 
     @Getter
     private final String name = "CpuConsumer";
@@ -58,17 +61,17 @@ public class CpuConsumer extends AbstractPidConsumer {
         //For CPU, our load is a series of threads run across all cores of our CPU.
         this.executorService = Executors.newCachedThreadPool();
         this.backgroundThreads = Collections.unmodifiableList(
-                    IntStream.range(0, NUMBER_OF_WORKERS)
+                    IntStream.range(0, CONSUMER_WORKER_COUNT)
                          .mapToObj(i -> executorService.submit(() -> {
                                  while(true) {
                                      try {
                                          // Do some work...
                                          Instant start = Instant.now();
-                                         long workTimeInNanos = this.getLoadSize() * WORK_TIME_PER_LOAD_IN_NANOS;
+                                         long workTimeInNanos = this.getLoadSize() * CPU_TIME_PER_LOAD_IN_NANOS;
                                          while (Duration.between(start, Instant.now()).toNanos() < workTimeInNanos) {
                                              //Do nothing. As loop time approaches sleep time, we get 50% System CPU.
                                          }
-                                         Thread.sleep(SLEEP_TIME_IN_MILLIS);
+                                         Thread.sleep(0, WORKER_SLEEP_TIME_IN_NANOS);
                                      } catch (Throwable t) {
                                          log.warn("Ran into exception in CPU consumption thread.", t);
                                      }

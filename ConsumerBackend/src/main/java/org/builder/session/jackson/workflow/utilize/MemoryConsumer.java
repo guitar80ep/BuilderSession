@@ -20,6 +20,8 @@ public class MemoryConsumer extends AbstractPidConsumer {
                                                                            Unit.KILOBYTES,
                                                                            Unit.MEGABYTES,
                                                                            Unit.GIGABYTES);
+    public static final int MEMORY_PER_LOAD_IN_BYTES =
+            Integer.parseInt(System.getenv("MEMORY_PER_LOAD_IN_BYTES"));
 
     @Getter
     private final String name = "MemoryConsumer";
@@ -70,7 +72,7 @@ public class MemoryConsumer extends AbstractPidConsumer {
     @Override
     protected Load generateLoad () {
         return new Load() {
-            private byte[] array = new byte[1024 * 1024];
+            private byte[] array = new byte[MEMORY_PER_LOAD_IN_BYTES];
 
             @Override
             public void close () {
