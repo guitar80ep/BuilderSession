@@ -97,6 +97,7 @@ public class TaskSystemUtil implements SystemUtil {
     public long getUsedMemory(MemoryUnit unit) {
         return MemoryUnit.convert(this.pollStats()
                                       .getContainers()
+                                      .values()
                                       .stream()
                                       .mapToLong(c -> c.getMemoryStats().getUsage())
                                       .sum(),
@@ -111,11 +112,11 @@ public class TaskSystemUtil implements SystemUtil {
 
     public double getCpuPercentageOfSystemUsedByThisContainer() {
         TaskStats stats = this.pollStats();
-        if(stats.getContainers().stream().allMatch(t -> t != null && t.hasPreviousCpuStats())) {
-            long systemUsage = stats.getContainers().stream().mapToLong( c -> c.getCpuStats().getSystemCpuUsage()).sum()
-                    - stats.getContainers().stream().mapToLong( c -> c.getPreviousCpuStats().getSystemCpuUsage()).sum();
-            long containerUsage = stats.getContainers().stream().mapToLong( c -> c.getCpuStats().getCpuUsage().getTotalUsage()).sum()
-                    - stats.getContainers().stream().mapToLong( c -> c.getPreviousCpuStats().getCpuUsage().getTotalUsage()).sum();
+        if(stats.getContainers().values().stream().allMatch(t -> t != null && t.hasPreviousCpuStats())) {
+            long systemUsage = stats.getContainers().values().stream().mapToLong( c -> c.getCpuStats().getSystemCpuUsage()).sum()
+                    - stats.getContainers().values().stream().mapToLong( c -> c.getPreviousCpuStats().getSystemCpuUsage()).sum();
+            long containerUsage = stats.getContainers().values().stream().mapToLong( c -> c.getCpuStats().getCpuUsage().getTotalUsage()).sum()
+                    - stats.getContainers().values().stream().mapToLong( c -> c.getPreviousCpuStats().getCpuUsage().getTotalUsage()).sum();
             // This seems odd originally, but that's because CPU isn't a "measurable" resource. It's
             // just how many cycles out of the total amount the CPU run were taken by this container.
             return systemUsage == 0 ? 0.0 : (double)containerUsage / (double)systemUsage;
@@ -128,6 +129,7 @@ public class TaskSystemUtil implements SystemUtil {
     public double getCpuPercentageAllocatedToThisContainer() {
         long processors = this.pollStats()
                               .getContainers()
+                              .values()
                               .stream()
                               .findFirst().get()
                               .getCpuStats()
