@@ -29,6 +29,7 @@ import lombok.NonNull;
 public class TaskMetadataClient {
 
     private static final String ENV_VAR = "ECS_CONTAINER_METADATA_URI";
+    private static final DateTimeFormatter FORMAT = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss.nnnnnnnnnX");
 
     @NonNull
     private final URL metadataEndpoint;
@@ -46,7 +47,7 @@ public class TaskMetadataClient {
                              .enableComplexMapKeySerialization()
                              // Set date format for example: 2015-01-08T22:57:31.547920715Z
                              // GSON doesn't have nanosecond precision be default, so we add it.
-                             .registerTypeAdapter(ZonedDateTime.class, new ZonedDateTimeSerializer(DateTimeFormatter.ISO_DATE))
+                             .registerTypeAdapter(ZonedDateTime.class, new ZonedDateTimeSerializer(FORMAT))
                              .create();
         } catch (MalformedURLException e) {
             throw new IllegalArgumentException("The endpoint \"" + System.getenv(ENV_VAR) + "\" was invalid.");
