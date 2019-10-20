@@ -25,7 +25,7 @@ public class TaskSystemUtil implements SystemUtil {
 
     private static final String MEMORY_LIMIT_KEY = "Memory";
     private static final String CPU_LIMIT_KEY = "CPU";
-    private static final Duration CACHE_TIME = Duration.ofMillis(200);
+    private static final Duration CACHE_TIME = Duration.ofMillis(100);
     private static final Duration WAIT_TIME = Duration.ofSeconds(30);
 
     private final Client<NoArgs, TaskMetadata> metadataClient = TaskMetadataClient.createTaskMetadataClient(CACHE_TIME);
@@ -34,6 +34,7 @@ public class TaskSystemUtil implements SystemUtil {
     public TaskSystemUtil () {
         try {
             //Perform some simple validation for our system to confirm that it is properly setup.
+            //TODO: Improve how this sleep time is setup to only do it on initialization...
             Thread.sleep(WAIT_TIME.toMillis());
             TaskStats initialStats = pollStats();
             TaskMetadata initialMetadata = pollMetadata();
@@ -90,7 +91,9 @@ public class TaskSystemUtil implements SystemUtil {
     }
 
     public long getTotalMemory(MemoryUnit unit) {
-        return MemoryUnit.convert(getTaskLimit(MEMORY_LIMIT_KEY), MemoryUnit.BYTES, unit);
+        return MemoryUnit.convert(getTaskLimit(MEMORY_LIMIT_KEY),
+                                  MemoryUnit.MEGABYTES,
+                                  unit);
     }
 
     public long getUsedMemory(MemoryUnit unit) {

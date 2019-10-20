@@ -34,11 +34,12 @@ public class ContainerSystemUtil implements SystemUtil {
     public ContainerSystemUtil() {
         try {
             //Perform some simple validation for our system to confirm that it is properly setup.
+            //TODO: Improve how this sleep time is setup to only do it on initialization...
+            Thread.sleep(WAIT_TIME.toMillis());
             ContainerStats initialStats = pollStats();
             ContainerMetadata initialMetadata = pollMetadata();
-            Thread.sleep(WAIT_TIME.toMillis());
-            Long reservedContainerCpu = pollMetadata().getLimits().get(CPU_LIMIT_KEY);
-            Long reservedContainerMemory = pollMetadata().getLimits().get(MEMORY_LIMIT_KEY);
+            Long reservedContainerCpu = getCpuUnitsTotal();
+            Long reservedContainerMemory = getTotalMemory(MemoryUnit.BYTES);
             if (reservedContainerCpu == null || reservedContainerCpu <= 0) {
                 throw new IllegalArgumentException("Container monitoring cannot be performed without a hard container reservation limit on CPU.");
             }
@@ -87,8 +88,8 @@ public class ContainerSystemUtil implements SystemUtil {
     }
 
     public long getTotalMemory(MemoryUnit unit) {
-        return MemoryUnit.convert(this.pollStats().getMemoryStats().getLimit(),
-                                  MemoryUnit.BYTES,
+        return MemoryUnit.convert(this.pollMetadata().getLimits().get(MEMORY_LIMIT_KEY),
+                                  MemoryUnit.MEGABYTES,
                                   unit);
     }
 
