@@ -7,6 +7,7 @@ import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
@@ -63,19 +64,21 @@ public class CpuConsumer extends AbstractPidConsumer {
         this.backgroundThreads = Collections.unmodifiableList(
                     IntStream.range(0, CONSUMER_WORKER_COUNT)
                          .mapToObj(i -> executorService.submit(() -> {
-                                 while(true) {
-                                     try {
-                                         // Do some work...
-                                         Instant start = Instant.now();
-                                         long workTimeInNanos = this.getLoadSize() * CPU_TIME_PER_LOAD_IN_NANOS;
-                                         while (Duration.between(start, Instant.now()).toNanos() < workTimeInNanos) {
-                                             //Do nothing. As loop time approaches sleep time, we get 50% System CPU.
-                                         }
-                                         Thread.sleep(0, WORKER_SLEEP_TIME_IN_NANOS);
-                                     } catch (Throwable t) {
-                                         log.warn("Ran into exception in CPU consumption thread.", t);
+                             long sleepMillis = TimeUnit.NANOSECONDS.toMillis(WORKER_SLEEP_TIME_IN_NANOS);
+                             int sleepNanos = (int)(WORKER_SLEEP_TIME_IN_NANOS % TimeUnit.MILLISECONDS.toNanos(1));
+                             while(true) {
+                                 try {
+                                     // Do some work...
+                                     Instant start = Instant.now();
+                                     long workTimeInNanos = this.getLoadSize() * CPU_TIME_PER_LOAD_IN_NANOS;
+                                     while (Duration.between(start, Instant.now()).toNanos() < workTimeInNanos) {
+                                         //Do nothing. As loop time approaches sleep time, we get 50% System CPU.
                                      }
+                                     Thread.sleep(sleepMillis, sleepNanos);
+                                 } catch (Throwable t) {
+                                     log.warn("Ran into exception in CPU consumption thread.", t);
                                  }
+                             }
                  }))
         .collect(Collectors.toList()));
     }

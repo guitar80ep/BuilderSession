@@ -183,11 +183,11 @@ Resources:
             - Name: CONSUMER_WORKER_COUNT
               Value: !Ref 'ConsumerWorkerCount'
             - Name: WORKER_SLEEP_TIME_IN_NANOS
-              Value: 500000
+              Value: 2000000
             - Name: CPU_TIME_PER_LOAD_IN_NANOS
-              Value: 1000
+              Value: 2500000
             - Name: MEMORY_PER_LOAD_IN_BYTES
-              Value: 1024
+              Value: 100000
           LogConfiguration:
             LogDriver: awslogs
             Options:

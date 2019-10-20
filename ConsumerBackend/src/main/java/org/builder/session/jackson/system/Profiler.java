@@ -10,6 +10,7 @@ import java.util.Random;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
 
 import org.build.session.jackson.proto.Resource;
@@ -50,13 +51,15 @@ public class Profiler implements Closeable {
         this.consumer = executor.submit(() -> {
             Random random = new Random();
             while(true) {
-                int sleepTimeInNanos = random.nextInt(PROFILING_MAX_SLEEP_IN_NANOS);
+                int totalSleepTimeInNanos = random.nextInt(PROFILING_MAX_SLEEP_IN_NANOS);
+                long sleepMillis = TimeUnit.NANOSECONDS.toMillis(totalSleepTimeInNanos);
+                int sleepNanos = (int)(totalSleepTimeInNanos % TimeUnit.MILLISECONDS.toNanos(1));
                 int computation = random.nextInt(PROFILING_MAX_COMPUTATIONS);
                 AtomicDouble value = new AtomicDouble();
                 random.doubles(computation).parallel().forEach(d -> {
                     value.addAndGet(d);
                 });
-                Thread.sleep(0, sleepTimeInNanos);
+                Thread.sleep(sleepMillis, sleepNanos);
             }
         });
     }
