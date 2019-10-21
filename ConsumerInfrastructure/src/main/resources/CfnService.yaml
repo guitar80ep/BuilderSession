@@ -126,6 +126,14 @@ Mappings:
         100
       MemoryPerLoadInBytes:
         100000
+      MinHeapFreeRatio:
+        20
+      MaxHeapFreeRatio:
+        40
+      GCTimeRatio:
+        4
+      AdaptiveSizePolicyWeight:
+        90
     Console:
       ConsumerBackendIP:
         "127.0.0.1"
@@ -178,6 +186,11 @@ Resources:
           EntryPoint:
             - "java"
             - !Join [ "", ["-Xmx", !Ref 'BackendHeap', "M" ] ]
+            - "-XX:UseParallelGC"
+            - !Join [ "", ["-XX:MinHeapFreeRatio=", !FindInMap ['ConsumerConfig', 'Backend', 'MinHeapFreeRatio'] ] ]
+            - !Join [ "", ["-XX:MaxHeapFreeRatio=", !FindInMap ['ConsumerConfig', 'Backend', 'MaxHeapFreeRatio'] ] ]
+            - !Join [ "", ["-XX:GCTimeRatio=", !FindInMap ['ConsumerConfig', 'Backend', 'GCTimeRatio'] ] ]
+            - !Join [ "", ["-XX:AdaptiveSizePolicyWeight=", !FindInMap ['ConsumerConfig', 'Backend', 'AdaptiveSizePolicyWeight'] ] ]
             - "-jar"
             - "/usr/local/ConsumerBackend/ConsumerBackend.jar"
             - "--runProfiling"

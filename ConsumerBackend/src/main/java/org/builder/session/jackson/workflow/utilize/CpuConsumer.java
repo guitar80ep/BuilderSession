@@ -2,8 +2,10 @@ package org.builder.session.jackson.workflow.utilize;
 
 import java.time.Duration;
 import java.time.Instant;
-import java.util.HashMap;
-import java.util.Map;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicLong;
@@ -30,6 +32,8 @@ public class CpuConsumer extends AbstractPidConsumer {
 
     private static final Duration PERIOD =
             Duration.ofMillis(Integer.parseInt(System.getenv("CONSUMER_CPU_PERIOD_IN_MILLIS")));
+    private static final Comparator<AtomicLong> SMALLEST_TO_LARGEST = Comparator.comparingLong(a -> a.get());
+    private static final Comparator<AtomicLong> LARGEST_TO_SMALLEST = SMALLEST_TO_LARGEST.reversed();
 
     @Getter
     private final String name = "CpuConsumer";
@@ -40,7 +44,7 @@ public class CpuConsumer extends AbstractPidConsumer {
     @NonNull
     private final ImmutableMap<Unit, Double> max;
     @NonNull
-    private final Map<Integer, AtomicLong> threadIdToWorkload;
+    private final List<AtomicLong> workloads;
     @NonNull
     private final AtomicLong scaleAdjustment = new AtomicLong(0);
     @Getter
@@ -94,15 +98,13 @@ public class CpuConsumer extends AbstractPidConsumer {
          * be done by a single additional background thread.
          */
         this.executorService = Executors.newFixedThreadPool((int)hostProcessorCount + 1);
-        this.threadIdToWorkload = new HashMap<>();
+        this.workloads = new ArrayList<>();
 
         // Start the consuming threads...
         for(int i = 0; i < hostProcessorCount; i++) {
-            final int threadIndex = i;
-            final AtomicLong workload = this.threadIdToWorkload.computeIfAbsent(threadIndex,
-                                                                                k -> new AtomicLong());
+            final AtomicLong workload = new AtomicLong();
+            this.workloads.add(workload);
             this.executorService.submit(() -> {
-
                 while(true) {
                     try {
                         Instant start = Instant.now();
@@ -125,28 +127,37 @@ public class CpuConsumer extends AbstractPidConsumer {
             while(true) {
                 try {
                     long adjustment = scaleAdjustment.getAndSet(0);
+                    //Sort to maintain ordering...
+                    Collections.sort(workloads, LARGEST_TO_SMALLEST);
                     if(adjustment >= 0) {
-                        for (int i = 0; adjustment > 0 && i < hostProcessorCount; i++) {
-                            AtomicLong work = threadIdToWorkload.get(i);
-                            while (work.get() < PERIOD.toMillis() && adjustment - work.get() >= 0) {
-                                //Increment work for this thread and reduce adjustment equivalently.
-                                adjustment = adjustment - work.getAndIncrement();
+                        for(AtomicLong work : workloads) {
+                            if(adjustment > 0) {
+                                break;
+                            } else {
+                                // We can adjust as long as the current adjustment is enough and there is space.
+                                while (work.get() < PERIOD.toMillis() && adjustment - work.get() >= 0) {
+                                    //Increment work for this thread and reduce adjustment equivalently.
+                                    adjustment = adjustment - work.getAndIncrement();
+                                }
                             }
                         }
                     } else {
-                        for (int i = 0; adjustment < 0 && i < hostProcessorCount; i++) {
-                            AtomicLong work = threadIdToWorkload.get(i);
-                            // We can adjust as long as the current adjustment is enough and there is space.
-                            while (work.get() > 0 && -adjustment - work.get() >= 0) {
-                                //Decrement work for this thread and reduce adjustment equivalently.
-                                adjustment = adjustment + work.getAndDecrement();
+                        for(AtomicLong work : workloads) {
+                            if(adjustment > 0) {
+                                break;
+                            } else {
+                                // We can adjust as long as the current adjustment is enough and there is space.
+                                while (work.get() > 0 && -adjustment - work.get() >= 0) {
+                                    //Decrement work for this thread and reduce adjustment equivalently.
+                                    adjustment = adjustment + work.getAndDecrement();
+                                }
                             }
                         }
                     }
 
                     //Run 4 times per minute to pick up changes.
                     scaleAdjustment.accumulateAndGet(adjustment, (a, b) -> a + b);
-                    log.debug("Workloads distributed (Remainder: {}): {}", adjustment, threadIdToWorkload);
+                    log.debug("Workloads distributed (Remainder: {}): {}", adjustment, workloads);
                     Thread.sleep(getRunDelay().toMillis());
                 } catch (Throwable t) {
                     log.warn("Swallowing exception caught in CPUConsumer adjustment thread.", t);

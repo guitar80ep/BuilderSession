@@ -21,8 +21,8 @@
     String targetInput = request.getParameter("target");
     boolean hasAllInputs = candidateInput != null && resourceInput != null &&
             unitInput != null && targetInput != null;
-    boolean hasNoInputs = candidateInput != null && resourceInput != null &&
-            unitInput != null && targetInput != null;
+    boolean hasNoInputs = candidateInput == null && resourceInput == null &&
+            unitInput == null && targetInput == null;
 
     ConsumeResponse consumeResult = null;
     if(hasNoInputs) {
