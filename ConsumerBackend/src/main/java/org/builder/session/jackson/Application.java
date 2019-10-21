@@ -127,7 +127,7 @@ public class Application
             double p = Double.parseDouble(listArgs[1].trim());
             double d = Double.parseDouble(listArgs[2].trim());
             double i = Double.parseDouble(listArgs[3].trim());
-            double decay = Double.parseDouble(listArgs[3].trim());
+            double decay = Double.parseDouble(listArgs[4].trim());
             Range<Double> range = Range.open(0.0, 10.0);
             Preconditions.checkArgument(range.contains(p), "Expected valid P-Value within range " + range);
             Preconditions.checkArgument(range.contains(d), "Expected valid D-Value within range " + range);
