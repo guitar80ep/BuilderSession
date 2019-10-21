@@ -2,8 +2,8 @@ package org.builder.session.jackson.workflow.utilize;
 
 import java.time.Duration;
 import java.time.Instant;
+import java.util.HashMap;
 import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicLong;
@@ -93,11 +93,12 @@ public class CpuConsumer extends AbstractPidConsumer {
          * be done by a single additional background thread.
          */
         this.executorService = Executors.newFixedThreadPool((int)hostProcessorCount + 1);
-        this.threadIdToWorkload = new ConcurrentHashMap<>();
+        this.threadIdToWorkload = new HashMap<>();
 
         // Start the consuming threads...
         for(int i = 0; i < hostProcessorCount; i++) {
             final long threadIndex = i;
+            this.threadIdToWorkload.put(threadIndex, new AtomicLong());
             this.executorService.submit(() -> {
                 AtomicLong workload = threadIdToWorkload.computeIfAbsent(threadIndex, AtomicLong::new);
                 while(true) {
@@ -146,6 +147,7 @@ public class CpuConsumer extends AbstractPidConsumer {
                     }
 
                     //Run 4 times per minute to pick up changes.
+                    log.debug("Workloads distributed: " + threadIdToWorkload);
                     Thread.sleep(getRunDelay().toMillis());
                 } catch (Throwable t) {
                     log.warn("Swallowing exception caught in CPUConsumer adjustment thread.", t);
