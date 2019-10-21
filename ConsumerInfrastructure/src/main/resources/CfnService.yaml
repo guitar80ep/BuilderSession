@@ -42,7 +42,7 @@ Parameters:
     Type: Number
     Default: 3072
     Description: Optional. The amount of CPU in CPU units for the Backend
-    container.
+      container.
   BackendMemory:
     Type: Number
     Default: 3072
@@ -109,7 +109,7 @@ Parameters:
     AllowedValues: [EC2, FARGATE]
     ConstraintDescription: Please choose a valid LaunchType from [EC2, FARGATE].
     Description: Required. The ECS launch type to use for the service. Note, that
-    this will in many ways effect the required parameters for the template.
+      this will in many ways effect the required parameters for the template.
 
 Conditions:
   HasTaskCpu: !Not [ !Equals [!Ref 'TaskCpu', ''] ]
@@ -451,7 +451,7 @@ Resources:
   PrivateNamespace:
     Type: AWS::ServiceDiscovery::PrivateDnsNamespace
     Properties:
-      Name: consumer-service.com
+      Name: "consumer-service.com"
       Vpc: !Ref 'VPC'
 
   # A discovery Service to use for ConsumerBackendService
@@ -466,8 +466,8 @@ Resources:
             Type: SRV
       HealthCheckCustomConfig:
         FailureThreshold: 2
-      Name: ConsumerService
-      NamespaceId: !Ref PrivateNamespace
+      Name: !Ref 'ServiceName'
+      NamespaceId: !Ref 'PrivateNamespace'
 
   ################################
   #                              #
