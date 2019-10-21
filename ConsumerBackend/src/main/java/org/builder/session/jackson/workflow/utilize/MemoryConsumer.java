@@ -77,6 +77,7 @@ public class MemoryConsumer extends AbstractPidConsumer {
 
     @Override
     protected void generateLoad (long scale) {
+        Preconditions.checkArgument(scale >= 0, "Scale should be greater than or equal to zero.");
         for(int i = 0; i < scale; i++) {
             load.add(new byte[MEMORY_PER_LOAD_IN_BYTES]);
         }
@@ -84,6 +85,7 @@ public class MemoryConsumer extends AbstractPidConsumer {
 
     @Override
     protected void destroyLoad (long scale) {
+        Preconditions.checkArgument(scale >= 0, "Scale should be greater than or equal to zero.");
         for(int i = 0; i < scale && !load.isEmpty(); i++) {
             load.remove();
         }

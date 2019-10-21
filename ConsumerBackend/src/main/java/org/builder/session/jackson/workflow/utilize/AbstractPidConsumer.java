@@ -44,7 +44,7 @@ public abstract class AbstractPidConsumer implements Consumer {
                 if (scale > 0) {
                     generateLoad(scale);
                 } else {
-                    destroyLoad(scale);
+                    destroyLoad(Math.abs(scale));
 
                     if (load <= 0) {
                         //Reset total error if the load has been emptied.

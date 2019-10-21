@@ -126,7 +126,8 @@ public class CpuConsumer extends AbstractPidConsumer {
         executorService.submit(() -> {
             while(true) {
                 try {
-                    long adjustment = scaleAdjustment.getAndSet(0);
+                    long adjustment = scaleAdjustment.get();
+                    scaleAdjustment.accumulateAndGet(adjustment, (a,b) -> a - b);
                     //Sort to maintain ordering...
                     Collections.sort(workloads, LARGEST_TO_SMALLEST);
                     if(adjustment >= 0) {
@@ -192,12 +193,14 @@ public class CpuConsumer extends AbstractPidConsumer {
 
     @Override
     protected void generateLoad (long scale) {
-        scaleAdjustment.accumulateAndGet(scale, (a, b) -> a + b);
+        Preconditions.checkArgument(scale >= 0, "Scale should be greater than or equal to zero.");
+        scaleAdjustment.addAndGet(scale);
     }
 
     @Override
     protected void destroyLoad (long scale) {
-        scaleAdjustment.accumulateAndGet(scale, (a, b) -> a - b);
+        Preconditions.checkArgument(scale >= 0, "Scale should be greater than or equal to zero.");
+        scaleAdjustment.addAndGet(scale);
     }
 
     @Override
