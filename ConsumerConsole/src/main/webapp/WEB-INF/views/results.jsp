@@ -38,7 +38,7 @@
     } else if (hasAllInputs) {
         Candidate candidate = Candidate.valueOf(candidateInput);
         Resource resource = Resource.valueOf(resourceInput);
-        Unit unit = Unit.valueOf(request.getParameter(unitInput));
+        Unit unit = Unit.valueOf(unitInput);
         double target = Double.valueOf(targetInput);
         UsageSpec usage = UsageSpec.newBuilder()
                                    .setResource(resource)

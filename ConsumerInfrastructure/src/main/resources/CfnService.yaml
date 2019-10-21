@@ -4,108 +4,122 @@ Parameters:
   ServiceName:
     Type: String
     Default: ConsumerService
-    Description: The name of the service to launch.
+    Description: Required. The name of the service to launch.
   TaskCpu:
     Type: Number
-    Default: 2048
-    Description: The amount of CPU for the entire Task.
+    Default: 4096
+    Description: Semi-Optional. The amount of CPU for the entire Task.
   TaskMemory:
     Type: Number
-    Default: 2048
-    Description: The amount of Memory for the entire Task.
+    Default: 4096
+    Description: Semi-Optional. The amount of Memory for the entire Task.
   TaskNetworkMode:
     Type: String
     Default: "host"
     AllowedValues: [host, awsvpc]
-    Description: The selected network mode for the Task. Only allows versions
-      that will simply work with this template.
-    ConstraintDescription: Please choose a valid network mode [host] or [awsvpc].
+    ConstraintDescription: Please choose a valid network mode from [host, awsvpc].
+    Description: Required. The selected network mode for the Task. Only
+      allows versions that will work with this template.
   ConsolePort:
     Type: Number
     Default: 8080
-    Description: The port for the backend server to listen on.
+    Description: Required. The port for the Console server to listen on.
   ConsoleCpu:
     Type: Number
     Default: 1024
-    Description: The amount of CPU in VCPU units for the backend container.
+    Description: Optional. The amount of CPU in CPU units for the Console
+      container.
   ConsoleMemory:
     Type: Number
     Default: 1024
-    Description: The amount of Memory in MB for the backend container.
+    Description: Optional. The amount of Memory in MB for the Console
+      container.
   BackendPort:
     Type: Number
     Default: 2581
-    Description: The port for the backend server to listen on.
+    Description: Required. The port for the backend server to listen on.
   BackendCpu:
     Type: Number
-    Default: 1024
-    Description: The amount of CPU in VCPU units for the backend container.
+    Default: 3072
+    Description: Optional. The amount of CPU in CPU units for the Backend
+    container.
   BackendMemory:
     Type: Number
-    Default: 1024
-    Description: The amount of Memory in MB for the backend container.
+    Default: 3072
+    Description: Optional. The amount of Memory in MB for the Backend container.
   BackendHeap:
     Type: Number
-    Default: 924
-    Description: The amount of Memory in MB for the backend container.
+    Default: 2972
+    Description: Required. The amount of heap Memory in MB for the
+      backend container.
   BackendPidConfig:
     Type: String
-    Default: "[500,0.075,0.100,0.02,0.95]"
-    Description: The PID config specified as [PaceInMillis,P,I,D,Decay] (ex. [5,1.0,2.0,3.0,0.95])
-      used to stabilize resource consumption.
+    Default: "[500,0.100,0.100,0.005,0.900]"
+    Description: Required. The PID config specified as [PaceInMillis,P,I,D,Decay]
+      (ex. [5,1.0,2.0,3.0,0.95]) used to stabilize resource consumption. If you
+      don't know much about PID, leave these as-is.
   Path:
     Type: String
     Default: "*"
-    Description: A path on the public load balancer that this service
-      should be connected to. Use * to send all load balancer
-      traffic to this service.
+    Description: Required. A path on the public load balancer that this service
+      should be connected to. Use * to send all load balancer traffic to this
+      service.
   Priority:
     Type: Number
     Default: 1
-    Description: The priority for the routing rule added to the load balancer.
-      This only applies if your have multiple services which have been
+    Description: Required. The priority for the routing rule added to the load
+      balancer. This only applies if your have multiple services which have been
       assigned to different paths on the load balancer.
   ExecutionRole:
     Type: String
     Default: ""
-    Description: An IAM role to give ECS to call APIs on your
-      behalf when starting containers such as pulling images from ECR.
+    Description: Required. An IAM role to give ECS to call APIs on your behalf
+      when starting containers such as pulling images from ECR.
   DesiredCapacity:
     Type: Number
-    Default: 4
-    Description: Number of EC2 instances to launch in your ECS cluster.
+    Default: 3
+    Description: Semi-Optional. Number of EC2 instances to launch in your ECS
+      cluster if you chose EC2 Launch Type.
   DesiredCount:
     Type: Number
     Default: 0
-    Description: Number of tasks to launch in your ECS cluster. Default is
-      zero to avoid risk of CFN slowness.
+    Description: Optional. Number of tasks to launch in your ECS cluster. Default
+      is zero to avoid risk of CFN slowness.
   MinHealthyPercent:
     Type: Number
     Default: 50
-    Description: The minimum percentage of desired tasks to have running during
-      a deployment.
+    Description: Optional. The minimum percentage of desired tasks to have running
+      during a deployment.
   MaxHealthyPercent:
     Type: Number
     Default: 150
-    Description: The max percentage of desired tasks to have running during
+    Description: Optional. The max percentage of desired tasks to have running during
       a deployment.
   ECSAMI:
-    Description: AMI ID
     Type: AWS::SSM::Parameter::Value<AWS::EC2::Image::Id>
     Default: /aws/service/ecs/optimized-ami/amazon-linux-2/recommended/image_id
+    Description: Semi-Optional. The AMI ID for the AMI to launch EC2 instances with.
   InstanceType:
-    Description: EC2 instance type to launch in the AutoScaling Group.
     Type: String
     Default: c5.4xlarge
+    Description: Semi-Optional. EC2 instance type to launch in the AutoScaling Group.
+  LaunchType:
+    Type: String
+    Default: EC2
+    AllowedValues: [EC2, FARGATE]
+    ConstraintDescription: Please choose a valid LaunchType from [EC2, FARGATE].
+    Description: Required. The ECS launch type to use for the service. Note, that
+    this will in many ways effect the required parameters for the template.
 
 Conditions:
-  HasExecutionRole: !Not [ !Equals [!Ref 'ExecutionRole', ''] ]
   HasTaskCpu: !Not [ !Equals [!Ref 'TaskCpu', ''] ]
   HasTaskMemory: !Not [ !Equals [!Ref 'TaskMemory', ''] ]
   HasConsoleCpu: !Not [ !Equals [!Ref 'ConsoleCpu', ''] ]
   HasConsoleMemory: !Not [ !Equals [!Ref 'ConsoleMemory', ''] ]
   HasBackendCpu: !Not [ !Equals [!Ref 'BackendCpu', ''] ]
   HasBackendMemory: !Not [ !Equals [!Ref 'BackendMemory', ''] ]
+  IsFargateLaunchType: !Equals [!Ref 'LaunchType', "FARGATE" ]
+  IsEC2LaunchType: !Equals [!Ref 'LaunchType', "EC2" ]
 
 Mappings:
   SubnetConfig:
@@ -168,18 +182,22 @@ Resources:
           - 'HasTaskMemory'
           - !Ref 'TaskMemory'
           - !Ref "AWS::NoValue"
-      ExecutionRoleArn:
-        Fn::If:
-          - 'HasExecutionRole'
-          - !Ref 'ExecutionRole'
-          - !Ref "AWS::NoValue"
+      ExecutionRoleArn: !Ref 'ExecutionRole'
       TaskRoleArn: !Ref 'ContainerRole'
       NetworkMode: !Ref 'TaskNetworkMode'
       ContainerDefinitions:
         - Name: 'ConsumerBackend'
           Essential: true
-          Cpu: !Ref 'BackendCpu'
-          Memory: !Ref 'BackendMemory'
+          Cpu:
+            Fn::If:
+              - 'HasBackendCpu'
+              - !Ref 'BackendCpu'
+              - !Ref "AWS::NoValue"
+          Memory:
+            Fn::If:
+              - 'HasBackendMemory'
+              - !Ref 'BackendMemory'
+              - !Ref "AWS::NoValue"
           Image: !Sub "${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/consumer-backend:latest"
           PortMappings:
             - ContainerPort: !Ref 'BackendPort'
@@ -214,8 +232,16 @@ Resources:
               awslogs-stream-prefix: "Backend"
         - Name: 'ConsumerConsole'
           Essential: true
-          Cpu: !Ref 'ConsoleCpu'
-          Memory: !Ref 'ConsoleMemory'
+          Cpu:
+            Fn::If:
+              - 'HasConsoleCpu'
+              - !Ref 'ConsoleCpu'
+              - !Ref "AWS::NoValue"
+          Memory:
+            Fn::If:
+              - 'HasConsoleMemory'
+              - !Ref 'ConsoleMemory'
+              - !Ref "AWS::NoValue"
           Image: !Sub "${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/consumer-console:latest"
           PortMappings:
             - ContainerPort: !Ref 'ConsolePort'
@@ -245,6 +271,7 @@ Resources:
         MaximumPercent: !Ref 'MaxHealthyPercent'
         MinimumHealthyPercent: !Ref 'MinHealthyPercent'
       DesiredCount: !Ref 'DesiredCount'
+      LaunchType: !Ref 'LaunchType'
       TaskDefinition: !Ref 'TaskDefinition'
       LoadBalancers:
         - ContainerName: ConsumerConsole
@@ -452,6 +479,7 @@ Resources:
   # themselves as members of the cluster, and run the docker containers.
   ECSAutoScalingGroup:
     Type: AWS::AutoScaling::AutoScalingGroup
+    Condition: IsEC2LaunchType
     Properties:
       VPCZoneIdentifier:
         - !Ref PublicSubnetOne
@@ -468,6 +496,7 @@ Resources:
         WillReplace: 'true'
   ContainerInstances:
     Type: AWS::AutoScaling::LaunchConfiguration
+    Condition: IsEC2LaunchType
     Properties:
       ImageId: !Ref 'ECSAMI'
       SecurityGroups: [!Ref 'EcsHostSecurityGroup']
@@ -479,30 +508,9 @@ Resources:
           echo ECS_CLUSTER=${ECSCluster} >> /etc/ecs/ecs.config
           yum install -y aws-cfn-bootstrap
           /opt/aws/bin/cfn-signal -e $? --stack ${ECSCluster} --resource ECSAutoScalingGroup --region ${AWS::Region}
-  AutoscalingRole:
-    Type: AWS::IAM::Role
-    Properties:
-      AssumeRolePolicyDocument:
-        Statement:
-          - Effect: Allow
-            Principal:
-              Service: [application-autoscaling.amazonaws.com]
-            Action: ['sts:AssumeRole']
-      Path: /
-      Policies:
-        - PolicyName: service-autoscaling
-          PolicyDocument:
-            Statement:
-              - Effect: Allow
-                Action:
-                  - 'application-autoscaling:*'
-                  - 'cloudwatch:DescribeAlarms'
-                  - 'cloudwatch:PutMetricAlarm'
-                  - 'ecs:DescribeServices'
-                  - 'ecs:UpdateService'
-                Resource: '*'
   EC2InstanceProfile:
     Type: AWS::IAM::InstanceProfile
+    Condition: IsEC2LaunchType
     Properties:
       Path: /
       Roles: [!Ref 'EC2Role']
