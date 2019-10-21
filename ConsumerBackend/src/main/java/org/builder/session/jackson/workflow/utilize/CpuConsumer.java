@@ -200,7 +200,7 @@ public class CpuConsumer extends AbstractPidConsumer {
     @Override
     protected void destroyLoad (long scale) {
         Preconditions.checkArgument(scale >= 0, "Scale should be greater than or equal to zero.");
-        scaleAdjustment.addAndGet(scale);
+        scaleAdjustment.addAndGet(-scale);
     }
 
     @Override
