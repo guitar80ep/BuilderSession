@@ -274,6 +274,17 @@ Resources:
       DesiredCount: !Ref 'DesiredCount'
       LaunchType: !Ref 'LaunchType'
       TaskDefinition: !Ref 'TaskDefinition'
+      NetworkConfiguration:
+        Fn::If:
+          - 'IsAwsVpcMode'
+          - AwsvpcConfiguration:
+              AssignPublicIp: "ENABLED"
+              SecurityGroups:
+                - !Ref 'EcsHostSecurityGroup'
+              Subnets:
+                - !Ref PublicSubnetOne
+                - !Ref PublicSubnetTwo
+          - !Ref "AWS::NoValue"
       LoadBalancers:
         - ContainerName: ConsumerConsole
           ContainerPort: !Ref 'ConsolePort'
