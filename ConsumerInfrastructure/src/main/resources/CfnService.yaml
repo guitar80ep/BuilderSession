@@ -122,8 +122,8 @@ Mappings:
     Backend:
       ProfileTimeInSeconds:
         10
-      CpuLoadFraction:
-        1000
+      CpuPeriodInMillis:
+        100
       MemoryPerLoadInBytes:
         100000
     Console:
@@ -189,8 +189,8 @@ Resources:
             - "--pid"
             - !Ref 'BackendPidConfig'
           Environment:
-            - Name: CONSUMER_CPU_LOAD_FRACTION
-              Value: !FindInMap ['ConsumerConfig', 'Backend', 'CpuLoadFraction']
+            - Name: CONSUMER_CPU_PERIOD_IN_MILLIS
+              Value: !FindInMap ['ConsumerConfig', 'Backend', 'CpuPeriodInMillis']
             - Name: CONSUMER_MEMORY_PER_LOAD_IN_BYTES
               Value: !FindInMap ['ConsumerConfig', 'Backend', 'MemoryPerLoadInBytes']
           LogConfiguration:

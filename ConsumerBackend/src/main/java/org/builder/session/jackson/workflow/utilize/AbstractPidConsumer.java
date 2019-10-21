@@ -43,6 +43,7 @@ public abstract class AbstractPidConsumer implements Consumer {
         Instant previousLog = Instant.now();
         while (true) {
             try {
+                //PID algorithm with some slight modifications to avoid integral overtake.
                 long goal = getGoal();
                 long consumed = getConsumed();
                 long currentError = goal - consumed;
@@ -62,6 +63,14 @@ public abstract class AbstractPidConsumer implements Consumer {
                         totalError = 0;
                     }
                 }
+
+                long signOfError = currentError == 0 ? 0 : currentError / Math.abs(currentError);
+                long signOfPreviousError = currentError == 0 ? 0 : previousError / Math.abs(previousError);
+                if(signOfError != signOfPreviousError) {
+                    //Reset total error if the error changed signs between + and -
+                    totalError = 0;
+                }
+
                 previousError = currentError;
                 totalError *= config.getIntegralDecay();
                 totalError += currentError;

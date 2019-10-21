@@ -28,7 +28,8 @@ public class CpuConsumer extends AbstractPidConsumer {
     private static final ImmutableSet<Unit> COMPUTE_UNITS = ImmutableSet.of(Unit.PERCENTAGE,
                                                                             Unit.VCPU);
 
-    private static final long PERIOD = Duration.ofSeconds(1).toMillis();
+    private static final Duration PERIOD =
+            Duration.ofMillis(Integer.parseInt(System.getenv("CONSUMER_CPU_PERIOD_IN_MILLIS")));
 
     @Getter
     private final String name = "CpuConsumer";
@@ -106,7 +107,7 @@ public class CpuConsumer extends AbstractPidConsumer {
                     try {
                         Instant start = Instant.now();
                         long workTimeInMillis = workload.get();
-                        long sleepTimeInMillis = PERIOD - workload.get();
+                        long sleepTimeInMillis = PERIOD.toMillis() - workload.get();
                         // The ratio of work to sleep time should be the CPU on this processor.
                         while (Duration.between(start, Instant.now()).toMillis() < workTimeInMillis) { }
                         if(sleepTimeInMillis > 0) {
