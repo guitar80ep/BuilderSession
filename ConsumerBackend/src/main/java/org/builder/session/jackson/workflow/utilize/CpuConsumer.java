@@ -142,12 +142,9 @@ public class CpuConsumer extends AbstractPidConsumer {
                         }
                     }
 
-                    if (adjustment > 0) {
-                        log.warn("Lost adjustment for CPU consumption: {}", adjustment);
-                    }
-
                     //Run 4 times per minute to pick up changes.
-                    log.debug("Workloads distributed: " + threadIdToWorkload);
+                    scaleAdjustment.accumulateAndGet(adjustment, (a, b) -> a + b);
+                    log.debug("Workloads distributed (Remainder: {}): {}", adjustment, threadIdToWorkload);
                     Thread.sleep(getRunDelay().toMillis());
                 } catch (Throwable t) {
                     log.warn("Swallowing exception caught in CPUConsumer adjustment thread.", t);
