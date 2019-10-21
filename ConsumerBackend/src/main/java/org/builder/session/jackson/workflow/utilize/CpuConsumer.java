@@ -128,7 +128,7 @@ public class CpuConsumer extends AbstractPidConsumer {
                     if(adjustment >= 0) {
                         for (int i = 0; adjustment > 0 && i < hostProcessorCount; i++) {
                             AtomicLong work = threadIdToWorkload.get(i);
-                            while (adjustment - work.get() >= 0) {
+                            while (work.get() < PERIOD.toMillis() && adjustment - work.get() >= 0) {
                                 //Increment work for this thread and reduce adjustment equivalently.
                                 adjustment = adjustment - work.getAndIncrement();
                             }
@@ -136,7 +136,8 @@ public class CpuConsumer extends AbstractPidConsumer {
                     } else {
                         for (int i = 0; adjustment < 0 && i < hostProcessorCount; i++) {
                             AtomicLong work = threadIdToWorkload.get(i);
-                            while (-adjustment - work.get() >= 0) {
+                            // We can adjust as long as the current adjustment is enough and there is space.
+                            while (work.get() > 0 && -adjustment - work.get() >= 0) {
                                 //Decrement work for this thread and reduce adjustment equivalently.
                                 adjustment = adjustment + work.getAndDecrement();
                             }
