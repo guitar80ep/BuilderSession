@@ -131,7 +131,7 @@ public class CpuConsumer extends AbstractPidConsumer {
                     Collections.sort(workloads, LARGEST_TO_SMALLEST);
                     if(adjustment >= 0) {
                         for(AtomicLong work : workloads) {
-                            if(adjustment > 0) {
+                            if(adjustment <= 0) {
                                 break;
                             } else {
                                 // We can adjust as long as the current adjustment is enough and there is space.
@@ -143,7 +143,7 @@ public class CpuConsumer extends AbstractPidConsumer {
                         }
                     } else {
                         for(AtomicLong work : workloads) {
-                            if(adjustment > 0) {
+                            if(adjustment >= 0) {
                                 break;
                             } else {
                                 // We can adjust as long as the current adjustment is enough and there is space.

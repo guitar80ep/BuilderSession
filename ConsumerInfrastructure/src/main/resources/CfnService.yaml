@@ -186,7 +186,7 @@ Resources:
           EntryPoint:
             - "java"
             - !Join [ "", ["-Xmx", !Ref 'BackendHeap', "M" ] ]
-            - "-XX:UseParallelGC"
+            - "-XX:+UseParallelOldGC"
             - !Join [ "", ["-XX:MinHeapFreeRatio=", !FindInMap ['ConsumerConfig', 'Backend', 'MinHeapFreeRatio'] ] ]
             - !Join [ "", ["-XX:MaxHeapFreeRatio=", !FindInMap ['ConsumerConfig', 'Backend', 'MaxHeapFreeRatio'] ] ]
             - !Join [ "", ["-XX:GCTimeRatio=", !FindInMap ['ConsumerConfig', 'Backend', 'GCTimeRatio'] ] ]
