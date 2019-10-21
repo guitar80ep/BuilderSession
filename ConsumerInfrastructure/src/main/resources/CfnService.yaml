@@ -118,6 +118,7 @@ Conditions:
   HasConsoleMemory: !Not [ !Equals [!Ref 'ConsoleMemory', ''] ]
   HasBackendCpu: !Not [ !Equals [!Ref 'BackendCpu', ''] ]
   HasBackendMemory: !Not [ !Equals [!Ref 'BackendMemory', ''] ]
+  IsAwsVpcMode: !Equals [ !Ref 'TaskNetworkMode', "awsvpc" ]
   IsFargateLaunchType: !Equals [!Ref 'LaunchType', "FARGATE" ]
   IsEC2LaunchType: !Equals [!Ref 'LaunchType', "EC2" ]
 
@@ -427,6 +428,11 @@ Resources:
       Name: !Ref 'ServiceName'
       Port: !Ref 'ConsolePort'
       Protocol: HTTP
+      TargetType:
+        Fn::If:
+          - IsAwsVpcMode
+          - "ip"
+          - "instance"
       UnhealthyThresholdCount: 2
       VpcId: !Ref 'VPC'
   LoadBalancerRule:
