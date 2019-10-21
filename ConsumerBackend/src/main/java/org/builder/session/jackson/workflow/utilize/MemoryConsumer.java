@@ -1,5 +1,8 @@
 package org.builder.session.jackson.workflow.utilize;
 
+import java.util.LinkedList;
+import java.util.Queue;
+
 import org.build.session.jackson.proto.Unit;
 import org.builder.session.jackson.system.SystemUtil;
 
@@ -27,8 +30,11 @@ public class MemoryConsumer extends AbstractPidConsumer {
     private final String name = "MemoryConsumer";
     @NonNull
     private final SystemUtil system;
+    @NonNull
+    private Queue<byte[]> load = new LinkedList<>();
     @Getter
     private double targetPercentage;
+    @NonNull
     private final ImmutableMap<Unit, Double> max;
 
     public MemoryConsumer(double targetPercentage, SystemUtil system, @NonNull PIDConfig pidConfig) {
@@ -70,15 +76,16 @@ public class MemoryConsumer extends AbstractPidConsumer {
     }
 
     @Override
-    protected Load generateLoad () {
-        return new Load() {
-            private byte[] array = new byte[MEMORY_PER_LOAD_IN_BYTES];
+    protected void generateLoad (long scale) {
+        for(int i = 0; i < scale; i++) {
+            load.add(new byte[MEMORY_PER_LOAD_IN_BYTES]);
+        }
+    }
 
-            @Override
-            public void close () {
-                //Do nothing... GC will pick it up.
-                array = null;
-            }
-        };
+    @Override
+    protected void destroyLoad (long scale) {
+        for(int i = 0; i < scale && !load.isEmpty(); i++) {
+            load.remove();
+        }
     }
 }

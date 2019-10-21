@@ -1,11 +1,7 @@
 package org.builder.session.jackson.workflow.utilize;
 
-import java.io.Closeable;
 import java.time.Duration;
 import java.time.Instant;
-import java.util.HashSet;
-import java.util.Set;
-import java.util.concurrent.ConcurrentLinkedQueue;
 
 import lombok.NonNull;
 import lombok.RequiredArgsConstructor;
@@ -21,18 +17,15 @@ public abstract class AbstractPidConsumer implements Consumer {
     private final PIDConfig config;
     private long previousError = 0;
     private long totalError = 0;
-    // We choose this because we can be more clear about the memory and performance implications as it grows.
-    private final ConcurrentLinkedQueue<Load> loadSet = new ConcurrentLinkedQueue<>();
+    private long load = 0;
 
     protected abstract long getConsumed ();
 
     protected abstract long getGoal ();
 
-    protected abstract Load generateLoad ();
+    protected abstract void generateLoad (long scale);
 
-    protected int getLoadSize () {
-        return loadSet.size();
-    }
+    protected abstract void destroyLoad (long scale);
 
     protected Duration getRunDelay () {
         return config.getPace();
@@ -51,15 +44,15 @@ public abstract class AbstractPidConsumer implements Consumer {
                 double d = ((currentError - previousError) * config.getDerivativeFactor());
                 double i = (totalError * config.getIntegralFactor());
                 long scale = (long) (p + i + d);
+                load += scale;
                 if (scale > 0) {
-                    loadSet.addAll(generateLoad(scale));
+                    generateLoad(scale);
                 } else {
-                    for (int k = 0; k < -scale && !loadSet.isEmpty(); k++) {
-                        loadSet.poll();
-                    }
+                    load = load <= 0 ? 0 : load;
+                    destroyLoad(scale);
 
-                    if (loadSet.size() == 0) {
-                        //Reset total error if the loadSet has been emptied.
+                    if (load == 0) {
+                        //Reset total error if the load has been emptied.
                         totalError = 0;
                     }
                 }
@@ -80,7 +73,7 @@ public abstract class AbstractPidConsumer implements Consumer {
                               new Object[] { this.getClass().getSimpleName(),
                                              goal,
                                              consumed,
-                                             this.getLoadSize(),
+                                             load,
                                              p, d, i,
                                              scale });
                 }
@@ -92,24 +85,8 @@ public abstract class AbstractPidConsumer implements Consumer {
         }
     }
 
-    private final Set<Load> generateLoad (long scale) {
-        Set<Load> generated = new HashSet<>();
-        for (long i = 0; i < scale; i++) {
-            generated.add(generateLoad());
-        }
-        return generated;
-    }
-
     @Override
     public void close () {
-        loadSet.forEach(c -> c.close());
-        loadSet.clear();
+
     }
-
-    @FunctionalInterface
-    protected interface Load extends Closeable {
-
-        public void close ();
-    }
-
 }

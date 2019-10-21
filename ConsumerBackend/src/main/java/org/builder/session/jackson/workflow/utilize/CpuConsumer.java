@@ -180,9 +180,13 @@ public class CpuConsumer extends AbstractPidConsumer {
     }
 
     @Override
-    protected Load generateLoad () {
-        scaleAdjustment.incrementAndGet();
-        return () -> { scaleAdjustment.decrementAndGet(); };
+    protected void generateLoad (long scale) {
+        scaleAdjustment.accumulateAndGet(scale, (a, b) -> a + b);
+    }
+
+    @Override
+    protected void destroyLoad (long scale) {
+        scaleAdjustment.accumulateAndGet(scale, (a, b) -> a - b);
     }
 
     @Override
