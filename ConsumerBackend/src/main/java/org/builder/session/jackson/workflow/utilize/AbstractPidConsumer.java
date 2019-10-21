@@ -34,6 +34,10 @@ public abstract class AbstractPidConsumer implements Consumer {
         return loadSet.size();
     }
 
+    protected Duration getRunDelay () {
+        return config.getPace();
+    }
+
     @Override
     public final void consume () {
         Instant previousLog = Instant.now();
