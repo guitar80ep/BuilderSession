@@ -39,7 +39,7 @@ public class CpuConsumer extends AbstractPidConsumer {
     @NonNull
     private final ImmutableMap<Unit, Double> max;
     @NonNull
-    private final Map<Long, AtomicLong> threadIdToWorkload;
+    private final Map<Integer, AtomicLong> threadIdToWorkload;
     @NonNull
     private final AtomicLong scaleAdjustment = new AtomicLong(0);
     @Getter
@@ -97,10 +97,11 @@ public class CpuConsumer extends AbstractPidConsumer {
 
         // Start the consuming threads...
         for(int i = 0; i < hostProcessorCount; i++) {
-            final long threadIndex = i;
-            this.threadIdToWorkload.put(threadIndex, new AtomicLong());
+            final int threadIndex = i;
+            final AtomicLong workload = this.threadIdToWorkload.computeIfAbsent(threadIndex,
+                                                                                k -> new AtomicLong());
             this.executorService.submit(() -> {
-                AtomicLong workload = threadIdToWorkload.computeIfAbsent(threadIndex, AtomicLong::new);
+
                 while(true) {
                     try {
                         Instant start = Instant.now();
@@ -123,7 +124,6 @@ public class CpuConsumer extends AbstractPidConsumer {
             while(true) {
                 try {
                     long adjustment = scaleAdjustment.getAndSet(0);
-
                     if(adjustment >= 0) {
                         for (int i = 0; adjustment > 0 && i < hostProcessorCount; i++) {
                             AtomicLong work = threadIdToWorkload.get(i);
