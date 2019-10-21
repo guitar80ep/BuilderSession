@@ -115,8 +115,8 @@ public class TaskSystemUtil implements SystemUtil {
     public double getCpuPercentageOfSystemUsedByThisTask() {
         TaskStats stats = this.pollStats();
         if(stats.getContainers().values().stream().allMatch(t -> t != null && t.hasPreviousCpuStats())) {
-            long systemUsage = stats.getContainers().values().stream().mapToLong( c -> c.getCpuStats().getSystemCpuUsage()).sum()
-                    - stats.getContainers().values().stream().mapToLong( c -> c.getPreviousCpuStats().getSystemCpuUsage()).sum();
+            long systemUsage = stats.getContainers().values().stream().findFirst().map(c -> c.getCpuStats().getSystemCpuUsage()).orElse(0L)
+                    - stats.getContainers().values().stream().findFirst().map(c -> c.getPreviousCpuStats().getSystemCpuUsage()).orElse(0L);
             long containerUsage = stats.getContainers().values().stream().mapToLong( c -> c.getCpuStats().getCpuUsage().getTotalUsage()).sum()
                     - stats.getContainers().values().stream().mapToLong( c -> c.getPreviousCpuStats().getCpuUsage().getTotalUsage()).sum();
             // This seems odd originally, but that's because CPU isn't a "measurable" resource. It's
