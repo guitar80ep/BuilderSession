@@ -65,7 +65,7 @@ public abstract class AbstractPidConsumer implements Consumer {
                 }
 
                 long signOfError = currentError == 0 ? 0 : currentError / Math.abs(currentError);
-                long signOfPreviousError = currentError == 0 ? 0 : previousError / Math.abs(previousError);
+                long signOfPreviousError = previousError == 0 ? 0 : previousError / Math.abs(previousError);
                 if(signOfError != signOfPreviousError) {
                     //Reset total error if the error changed signs between + and -
                     totalError = 0;
