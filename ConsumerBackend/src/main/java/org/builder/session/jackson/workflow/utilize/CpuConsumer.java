@@ -127,7 +127,7 @@ public class CpuConsumer extends AbstractPidConsumer {
             while(true) {
                 try {
                     long adjustment = scaleAdjustment.get();
-                    scaleAdjustment.accumulateAndGet(adjustment, (a,b) -> a - b);
+                    scaleAdjustment.addAndGet(-adjustment);
                     //Sort to maintain ordering...
                     Collections.sort(workloads, LARGEST_TO_SMALLEST);
                     if(adjustment >= 0) {
@@ -157,7 +157,7 @@ public class CpuConsumer extends AbstractPidConsumer {
                     }
 
                     // Add the remainder value back in.
-                    scaleAdjustment.accumulateAndGet(adjustment, (a, b) -> a + b);
+                    scaleAdjustment.addAndGet(adjustment);
                     log.debug("Workloads distributed (Remainder: {}): {}", adjustment, workloads);
                     Thread.sleep(getRunDelay().toMillis());
                 } catch (Throwable t) {
