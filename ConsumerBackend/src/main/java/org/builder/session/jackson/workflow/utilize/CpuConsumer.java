@@ -135,7 +135,7 @@ public class CpuConsumer extends AbstractPidConsumer {
                                 break;
                             } else {
                                 // We can adjust as long as the current adjustment is enough and there is space.
-                                while (work.get() >= PERIOD.toMillis() && adjustment - work.get() >= 0) {
+                                while (work.get() < PERIOD.toMillis() && adjustment - work.get() >= 0) {
                                     //Increment work for this thread and reduce adjustment equivalently.
                                     adjustment -= work.getAndIncrement();
                                 }
@@ -147,7 +147,7 @@ public class CpuConsumer extends AbstractPidConsumer {
                                 break;
                             } else {
                                 // We can adjust as long as the current adjustment is enough and there is space.
-                                while (work.get() > 0 && work.get() + adjustment >= 0) {
+                                while (work.get() > 0 && work.get() + adjustment <= 0) {
                                     //Decrement work for this thread and reduce adjustment equivalently.
                                     adjustment += work.getAndDecrement();
                                 }
