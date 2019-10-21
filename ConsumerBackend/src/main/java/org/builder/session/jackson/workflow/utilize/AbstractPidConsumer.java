@@ -1,7 +1,6 @@
 package org.builder.session.jackson.workflow.utilize;
 
 import java.time.Duration;
-import java.time.Instant;
 
 import lombok.NonNull;
 import lombok.RequiredArgsConstructor;
@@ -10,8 +9,6 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 @RequiredArgsConstructor
 public abstract class AbstractPidConsumer implements Consumer {
-
-    public static final Duration DELAY_BETWEEN_LOGS = Duration.ofSeconds(1);
 
     @NonNull
     private final PIDConfig config;
@@ -33,7 +30,6 @@ public abstract class AbstractPidConsumer implements Consumer {
 
     @Override
     public final void consume () {
-        Instant previousLog = Instant.now();
         while (true) {
             try {
                 //PID algorithm with some slight modifications to avoid integral overtake.
@@ -48,10 +44,9 @@ public abstract class AbstractPidConsumer implements Consumer {
                 if (scale > 0) {
                     generateLoad(scale);
                 } else {
-                    load = load <= 0 ? 0 : load;
                     destroyLoad(scale);
 
-                    if (load == 0) {
+                    if (load <= 0) {
                         //Reset total error if the load has been emptied.
                         totalError = 0;
                     }
@@ -67,17 +62,13 @@ public abstract class AbstractPidConsumer implements Consumer {
                 previousError = currentError;
                 totalError *= config.getIntegralDecay();
                 totalError += currentError;
-                if (Duration.between(previousLog, Instant.now()).toMillis() >= DELAY_BETWEEN_LOGS.toMillis()) {
-                    previousLog = Instant.now();
-                    log.debug("Status of {}: [Goal: {}, Consumed: {}, Load: {}, P: {}, D: {}, I: {} = S: {}]",
-                              new Object[] { this.getClass().getSimpleName(),
-                                             goal,
-                                             consumed,
-                                             load,
-                                             p, d, i,
-                                             scale });
-                }
-
+                log.debug("Status of {}: [Goal: {}, Consumed: {}, Load: {}, P: {}, D: {}, I: {} = S: {}]",
+                          new Object[] { this.getClass().getSimpleName(),
+                                         goal,
+                                         consumed,
+                                         load,
+                                         p, d, i,
+                                         scale });
                 Thread.sleep(config.getPace().toMillis());
             } catch (Throwable t) {
                 log.error("Caught an exception while consuming resources for {}. Swallowing.", this.getClass().getSimpleName(), t);

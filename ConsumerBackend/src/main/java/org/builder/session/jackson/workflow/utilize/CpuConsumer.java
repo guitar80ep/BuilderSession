@@ -122,7 +122,7 @@ public class CpuConsumer extends AbstractPidConsumer {
             });
         }
 
-        // Start the adjustment thread...
+        // Start the applier/adjustment thread...
         executorService.submit(() -> {
             while(true) {
                 try {
@@ -135,9 +135,9 @@ public class CpuConsumer extends AbstractPidConsumer {
                                 break;
                             } else {
                                 // We can adjust as long as the current adjustment is enough and there is space.
-                                while (work.get() < PERIOD.toMillis() && adjustment - work.get() >= 0) {
+                                while (work.get() >= PERIOD.toMillis() && adjustment - work.get() >= 0) {
                                     //Increment work for this thread and reduce adjustment equivalently.
-                                    adjustment = adjustment - work.getAndIncrement();
+                                    adjustment -= work.getAndIncrement();
                                 }
                             }
                         }
@@ -147,15 +147,15 @@ public class CpuConsumer extends AbstractPidConsumer {
                                 break;
                             } else {
                                 // We can adjust as long as the current adjustment is enough and there is space.
-                                while (work.get() > 0 && -adjustment - work.get() >= 0) {
+                                while (work.get() > 0 && work.get() + adjustment >= 0) {
                                     //Decrement work for this thread and reduce adjustment equivalently.
-                                    adjustment = adjustment + work.getAndDecrement();
+                                    adjustment += work.getAndDecrement();
                                 }
                             }
                         }
                     }
 
-                    //Run 4 times per minute to pick up changes.
+                    // Add the remainder value back in.
                     scaleAdjustment.accumulateAndGet(adjustment, (a, b) -> a + b);
                     log.debug("Workloads distributed (Remainder: {}): {}", adjustment, workloads);
                     Thread.sleep(getRunDelay().toMillis());
