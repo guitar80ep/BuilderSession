@@ -10,6 +10,7 @@
 <%@ page import="org.builder.session.jackson.utils.JsonHelper" %>
 <%@ page import="org.springframework.context.ApplicationContext" %>
 <%@ page import="org.springframework.web.servlet.support.RequestContextUtils" %>
+<%@ page import="software.amazon.awssdk.utils.StringUtils" %>
 <html>
 <%
     ApplicationContext ac = RequestContextUtils.findWebApplicationContext(request);
@@ -19,10 +20,14 @@
     String resourceInput = request.getParameter("resource");
     String unitInput = request.getParameter("unit");
     String targetInput = request.getParameter("target");
-    boolean hasAllInputs = candidateInput != null && resourceInput != null &&
-            unitInput != null && targetInput != null;
-    boolean hasNoInputs = candidateInput == null && resourceInput == null &&
-            unitInput == null && targetInput == null;
+    boolean hasAllInputs = !StringUtils.isBlank(candidateInput) &&
+            !StringUtils.isBlank(resourceInput) &&
+            !StringUtils.isBlank(unitInput) &&
+            !StringUtils.isBlank(targetInput);
+    boolean hasNoInputs = StringUtils.isBlank(candidateInput) &&
+            StringUtils.isBlank(resourceInput) &&
+            StringUtils.isBlank(unitInput) &&
+            StringUtils.isBlank(targetInput);
 
     ConsumeResponse consumeResult = null;
     if(hasNoInputs) {
