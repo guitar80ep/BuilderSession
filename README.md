@@ -2,6 +2,8 @@
 ## Introduction
 A set of containers to automatically consume resources for a builder session on analyzing your ECS workloads. The project helps to setup an initial service that can use an API to consume resources on the backing host. Requests can specify the resource consumption for either a single host (as specified by the Elastic Load Balancer) or for all of the hosts as they communicate via Service Discovery.
 
+![Alt text](Architecture.png "High-Level Setup of ConsumerService")
+
 ## Setup
 To setup the service in your ECS account, you merely perform a few simple steps. The estimated setup time is approximately 10 minutes.
 
@@ -30,7 +32,3 @@ To setup the service in your ECS account, you merely perform a few simple steps.
   * Input the data you would like to send in your request.
   * Note that if the request is invalid you may see errors.
   * Leaving all of the fields empty will result in a simple read of all the live Tasks.
-
-## Architecture
-
-![Alt text](Architecture.png "High-Level Setup of ConsumerService")
