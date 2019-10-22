@@ -4,11 +4,18 @@ import java.time.Instant;
 import java.util.List;
 import java.util.Random;
 
+import org.builder.session.jackson.client.SimpleClient;
+import org.builder.session.jackson.utils.NoArgs;
+
 import lombok.Data;
 import lombok.NonNull;
 import lombok.ToString;
 
-public interface ServiceRegistry {
+public interface ServiceRegistry extends SimpleClient<List<ServiceRegistry.Instance>> {
+
+    public default List<Instance> call(NoArgs noArgs) {
+        return this.resolveHosts();
+    }
 
     public List<Instance> resolveHosts();
 

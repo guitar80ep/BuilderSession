@@ -81,7 +81,7 @@ public class Application
                          "ConsoleAppender",
                          "FileAppender")
               .addLogger("org.builder.session.jackson.workflow",
-                         Level.INFO,
+                         Level.DEBUG,
                          false,
                          "ConsoleAppender",
                          "FileAppender")

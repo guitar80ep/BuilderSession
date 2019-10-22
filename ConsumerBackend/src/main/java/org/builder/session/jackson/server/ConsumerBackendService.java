@@ -1,5 +1,6 @@
 package org.builder.session.jackson.server;
 
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -16,9 +17,11 @@ import org.build.session.jackson.proto.InstanceSummary;
 import org.build.session.jackson.proto.Resource;
 import org.build.session.jackson.proto.Unit;
 import org.build.session.jackson.proto.UsageSpec;
+import org.builder.session.jackson.client.SimpleClient;
 import org.builder.session.jackson.client.consumer.ConsumerBackendClient;
 import org.builder.session.jackson.client.loadbalancing.ServiceRegistry;
 import org.builder.session.jackson.client.loadbalancing.ServiceRegistryImpl;
+import org.builder.session.jackson.client.wrapper.CachedClient;
 import org.builder.session.jackson.system.SystemUtil;
 import org.builder.session.jackson.workflow.Workflow;
 import org.builder.session.jackson.workflow.utilize.Consumer;
@@ -37,13 +40,14 @@ import lombok.extern.slf4j.Slf4j;
 public final class ConsumerBackendService extends ConsumerBackendServiceGrpc.ConsumerBackendServiceImplBase {
 
     private static final double INITIAL_TARGET = 0.33;
+    private static final Duration INSTANCE_DISCOVERY_PACE = Duration.ofSeconds(15);
 
     @NonNull
     private final Workflow workflow = new Workflow();
     @NonNull
     private final Map<Resource, Consumer> consumers;
     @NonNull
-    private final ServiceRegistry registry;
+    private final SimpleClient<List<ServiceRegistry.Instance>> registry;
     @NonNull
     private final String host;
     @NonNull
@@ -56,7 +60,7 @@ public final class ConsumerBackendService extends ConsumerBackendServiceGrpc.Con
                                   @NonNull String serviceDiscoveryId) {
         this.host = host;
         this.port = port;
-        this.registry = new ServiceRegistryImpl(serviceDiscoveryId);
+        this.registry = CachedClient.wrap(new ServiceRegistryImpl(serviceDiscoveryId), INSTANCE_DISCOVERY_PACE, true);
 
         // Setup consumers...
         consumers = ImmutableMap.<Resource, Consumer>builder()
@@ -75,7 +79,7 @@ public final class ConsumerBackendService extends ConsumerBackendServiceGrpc.Con
                                                     request));
                     break;
                 case ALL:
-                    List<ServiceRegistry.Instance> hosts = registry.resolveHosts();
+                    List<ServiceRegistry.Instance> hosts = registry.call();
                     List<ConsumeResponse> responses = hosts.parallelStream()
                                                            .map(h -> consume(h, ConsumeRequest.newBuilder()
                                                                                               .addAllUsage(request.getUsageList())

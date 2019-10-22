@@ -75,6 +75,11 @@ Parameters:
     Default: ""
     Description: Required. An IAM role to give ECS to call APIs on your behalf
       when starting containers such as pulling images from ECR.
+  EC2KeyPair:
+    Type: String
+    Default: ""
+    Description: Optional. A key pair to attach to EC2 instances launched
+      in the Cluster.
   DesiredCapacity:
     Type: Number
     Default: 3
@@ -121,6 +126,7 @@ Conditions:
   IsAwsVpcMode: !Equals [ !Ref 'TaskNetworkMode', "awsvpc" ]
   IsFargateLaunchType: !Equals [!Ref 'LaunchType', "FARGATE" ]
   IsEC2LaunchType: !Equals [!Ref 'LaunchType', "EC2" ]
+  HasEC2KeyPair: !Not [ !Equals [!Ref 'EC2KeyPair', ''] ]
 
 Mappings:
   SubnetConfig:
@@ -519,6 +525,11 @@ Resources:
       SecurityGroups: [!Ref 'EcsHostSecurityGroup']
       InstanceType: !Ref 'InstanceType'
       IamInstanceProfile: !Ref 'EC2InstanceProfile'
+      KeyName:
+        Fn::If:
+          - 'HasEC2KeyPair'
+          - !Ref 'EC2KeyPair'
+          - !Ref "AWS::NoValue"
       UserData:
         Fn::Base64: !Sub |
           #!/bin/bash -xe

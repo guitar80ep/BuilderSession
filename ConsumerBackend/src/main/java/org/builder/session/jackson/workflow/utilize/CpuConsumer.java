@@ -13,7 +13,6 @@ import java.util.concurrent.atomic.AtomicLong;
 import org.build.session.jackson.proto.Unit;
 import org.builder.session.jackson.client.ecs.TaskMetadataClient;
 import org.builder.session.jackson.system.SystemUtil;
-import org.builder.session.jackson.utils.NoArgs;
 
 import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableMap;
@@ -56,7 +55,7 @@ public class CpuConsumer extends AbstractPidConsumer {
                        @NonNull PIDConfig pidConfig) {
         super(pidConfig);
         final long hostProcessorCount = TaskMetadataClient.createContainerStatsClient(Duration.ofMillis(1))
-                                                          .call(NoArgs.INSTANCE)
+                                                          .call()
                                                           .getCpuStats()
                                                           .getOnlineCpus();
         Preconditions.checkArgument(0.0 <= targetPercentage && targetPercentage <= 1.0, "Must be between 0.0 and 1.0.");

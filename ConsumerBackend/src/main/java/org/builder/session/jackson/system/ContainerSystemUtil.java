@@ -3,14 +3,13 @@ package org.builder.session.jackson.system;
 import java.time.Duration;
 import java.util.Optional;
 
-import org.builder.session.jackson.client.Client;
+import org.builder.session.jackson.client.SimpleClient;
 import org.builder.session.jackson.client.ecs.TaskMetadataClient;
 import org.builder.session.jackson.client.messages.ContainerMetadata;
 import org.builder.session.jackson.client.messages.ContainerStats;
 import org.builder.session.jackson.client.messages.TaskMetadata;
 import org.builder.session.jackson.exception.ConsumerDependencyException;
 import org.builder.session.jackson.exception.ConsumerInternalException;
-import org.builder.session.jackson.utils.NoArgs;
 
 import lombok.extern.slf4j.Slf4j;
 
@@ -28,8 +27,8 @@ public class ContainerSystemUtil implements SystemUtil {
     private static final Duration CACHE_TIME = Duration.ofMillis(200);
     private static final Duration WAIT_TIME = Duration.ofSeconds(20);
 
-    private final Client<NoArgs, TaskMetadata> metadataClient = TaskMetadataClient.createTaskMetadataClient(CACHE_TIME);
-    private final Client<NoArgs, ContainerStats> statsClient = TaskMetadataClient.createContainerStatsClient(CACHE_TIME);
+    private final SimpleClient<TaskMetadata> metadataClient = TaskMetadataClient.createTaskMetadataClient(CACHE_TIME);
+    private final SimpleClient<ContainerStats> statsClient = TaskMetadataClient.createContainerStatsClient(CACHE_TIME);
 
     public ContainerSystemUtil() {
         try {
@@ -55,7 +54,7 @@ public class ContainerSystemUtil implements SystemUtil {
      * Polls the latest ContainerStats from the Metadata endpoint and logs the result.
      */
     protected ContainerStats pollStats () {
-        ContainerStats stats = Optional.ofNullable(statsClient.call(NoArgs.INSTANCE))
+        ContainerStats stats = Optional.ofNullable(statsClient.call())
                                        .orElseThrow(() -> new ConsumerDependencyException("Couldn't gather stats from endpoint."));
         log.debug("Pulled container stats: " + stats);
         return stats;
@@ -65,7 +64,7 @@ public class ContainerSystemUtil implements SystemUtil {
      * Polls the latest ContainerStats from the Metadata endpoint and logs the result.
      */
     protected ContainerMetadata pollMetadata () {
-        TaskMetadata stats = Optional.ofNullable(metadataClient.call(NoArgs.INSTANCE))
+        TaskMetadata stats = Optional.ofNullable(metadataClient.call())
                                      .orElseThrow(() -> new ConsumerDependencyException("Couldn't gather metadata from endpoint."));
         log.debug("Pulled task metadata: " + stats);
         return stats.getContainers()
