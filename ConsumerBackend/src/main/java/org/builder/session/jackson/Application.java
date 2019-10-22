@@ -59,36 +59,6 @@ public class Application
         System.exit(0);
     }
 
-    private static void initializeLogging () {
-        //Initialize logging...
-        LoggingInitializer logger = new LoggingInitializer();
-        logger.addPatternLayout("MainLayout", "%d{HH:mm:ss.SSS} [%t] %-5level %logger{36} - %msg%n")
-              .addConsoleAppender("ConsoleAppender", "MainLayout")
-              .addFileAppender("FileAppender", "logs/application.log", "MainLayout")
-              .addRootLogger(Level.WARN)
-              .addLogger("org.builder.session", Level.DEBUG,
-                         false,
-                         "ConsoleAppender",
-                         "FileAppender")
-              .addLogger("org.builder.session.jackson.system",
-                         Level.INFO,
-                         false,
-                         "ConsoleAppender",
-                         "FileAppender")
-              .addLogger("org.builder.session.jackson.client",
-                         Level.INFO,
-                         false,
-                         "ConsoleAppender",
-                         "FileAppender")
-              .addLogger("org.builder.session.jackson.workflow",
-                         Level.DEBUG,
-                         false,
-                         "ConsoleAppender",
-                         "FileAppender")
-              .build();
-        log.info("Logging is initialized!");
-    }
-
     protected static boolean shouldStop(BufferedReader reader) throws IOException {
         return reader.ready();
     }
@@ -173,5 +143,35 @@ public class Application
         } else {
             return Optional.empty();
         }
+    }
+
+    private static void initializeLogging () {
+        //Initialize logging...
+        LoggingInitializer logger = new LoggingInitializer();
+        logger.addPatternLayout("MainLayout", "%d{HH:mm:ss.SSS} [%t] %-5level %logger{36} - %msg%n")
+              .addConsoleAppender("ConsoleAppender", "MainLayout")
+              .addFileAppender("FileAppender", "logs/application.log", "MainLayout")
+              .addRootLogger(Level.WARN)
+              .addLogger("org.builder.session", Level.DEBUG,
+                         false,
+                         "ConsoleAppender",
+                         "FileAppender")
+              .addLogger("org.builder.session.jackson.system",
+                         Level.INFO,
+                         false,
+                         "ConsoleAppender",
+                         "FileAppender")
+              .addLogger("org.builder.session.jackson.client",
+                         Level.INFO,
+                         false,
+                         "ConsoleAppender",
+                         "FileAppender")
+              .addLogger("org.builder.session.jackson.workflow",
+                         Level.INFO,
+                         false,
+                         "ConsoleAppender",
+                         "FileAppender")
+              .build();
+        log.info("Logging is initialized!");
     }
 }
