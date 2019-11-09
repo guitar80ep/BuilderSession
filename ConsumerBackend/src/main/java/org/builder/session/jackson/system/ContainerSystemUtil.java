@@ -11,6 +11,7 @@ import org.builder.session.jackson.client.messages.TaskMetadata;
 import org.builder.session.jackson.exception.ConsumerDependencyException;
 import org.builder.session.jackson.exception.ConsumerInternalException;
 
+import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
 
 /**
@@ -34,15 +35,15 @@ public class ContainerSystemUtil implements SystemUtil {
         try {
             //Perform some simple validation for our system to confirm that it is properly setup.
             //TODO: Improve how this sleep time is setup to only do it on initialization...
-            Thread.sleep(WAIT_TIME.toMillis());
             ContainerStats initialStats = pollStats();
             ContainerMetadata initialMetadata = pollMetadata();
-            Long reservedContainerCpu = getCpuUnitsTotal();
-            Long reservedContainerMemory = getTotalMemory(MemoryUnit.BYTES);
-            if (reservedContainerCpu == null || reservedContainerCpu <= 0) {
+            Thread.sleep(WAIT_TIME.toMillis());
+            long reservedContainerCpu = getTotalCpu(DigitalUnit.VCPU);
+            long reservedContainerMemory = getTotalMemory(DigitalUnit.BYTES);
+            if (reservedContainerCpu <= 0) {
                 throw new IllegalArgumentException("Container monitoring cannot be performed without a hard container reservation limit on CPU.");
             }
-            if (reservedContainerMemory == null || reservedContainerMemory <= 0) {
+            if (reservedContainerMemory <= 0) {
                 throw new IllegalArgumentException("Container monitoring cannot be performed without a hard container reservation limit on Memory.");
             }
         } catch (Throwable t) {
@@ -79,32 +80,33 @@ public class ContainerSystemUtil implements SystemUtil {
     }
 
     @Override
-    public long getFreeMemory(MemoryUnit unit) {
+    public long getFreeMemory(@NonNull DigitalUnit unit) {
         ContainerStats stats = this.pollStats();
-        return MemoryUnit.convert(stats.getMemoryStats().getLimit() - stats.getMemoryStats().getUsage(),
-                MemoryUnit.BYTES,
-                unit);
+        return unit.from(stats.getMemoryStats().getLimit() - stats.getMemoryStats().getUsage(),
+                         DigitalUnit.BYTES);
     }
 
-    public long getTotalMemory(MemoryUnit unit) {
-        return MemoryUnit.convert(this.pollMetadata().getLimits().get(MEMORY_LIMIT_KEY),
-                                  MemoryUnit.MEGABYTES,
-                                  unit);
+    @Override
+    public long getTotalMemory(@NonNull DigitalUnit unit) {
+        return unit.from(this.pollMetadata().getLimits().get(MEMORY_LIMIT_KEY),
+                         DigitalUnit.MEGABYTES);
     }
 
-    public long getUsedMemory(MemoryUnit unit) {
-        return MemoryUnit.convert(this.pollStats().getMemoryStats().getUsage(),
-                                  MemoryUnit.BYTES,
-                                  unit);
+    @Override
+    public long getUsedMemory(DigitalUnit unit) {
+        return unit.from(this.pollStats().getMemoryStats().getUsage(),
+                         DigitalUnit.BYTES);
     }
 
+    @Override
     public double getMemoryPercentage() {
         ContainerStats stats = this.pollStats();
         return (double)stats.getMemoryStats().getUsage() /
                 (double)stats.getMemoryStats().getLimit();
     }
 
-    public double getCpuPercentageOfSystemUsedByThisContainer() {
+
+    protected double getCpuPercentageOfSystemUsedByThisContainer() {
         ContainerStats stats = this.pollStats();
         if(stats.hasPreviousCpuStats()) {
             long systemUsage = stats.getCpuStats().getSystemCpuUsage()
@@ -120,26 +122,40 @@ public class ContainerSystemUtil implements SystemUtil {
         }
     }
 
-    public double getCpuPercentageAllocatedToThisContainer() {
+    protected double getCpuPercentageAllocatedToThisContainer() {
         return (double)this.pollMetadata().getLimits().get(CPU_LIMIT_KEY)
                 / (double)(this.pollStats().getCpuStats().getOnlineCpus() * getUnitsPerProcessor());
     }
 
+    @Override
     public double getCpuPercentage() {
         // If the we used 30% of the system, but we were allocated 60%: we have used 50% of our space.
         return getCpuPercentageOfSystemUsedByThisContainer()
                 / getCpuPercentageAllocatedToThisContainer();
     }
 
-    public long getCpuUnitsTotal() {
+    @Override
+    public long getTotalCpu(DigitalUnit unit) {
         // We gather the adjusted CPU shares from ECS directly.
-        return this.pollMetadata().getLimits().get(CPU_LIMIT_KEY);
+        return unit.from(this.pollMetadata().getLimits().get(CPU_LIMIT_KEY), DigitalUnit.VCPU);
     }
 
-    public long getCpuUnitsUtilized () {
+    @Override
+    public long getUsedCpu (DigitalUnit unit) {
         // If we have our container is using 50% of it's reserved limit and a CPU using
-        return (long)(this.getCpuPercentage() * getCpuUnitsTotal());
+        return unit.from((long)(this.getCpuPercentage() * getTotalCpu(DigitalUnit.VCPU)), DigitalUnit.VCPU);
     }
 
 
+
+    @Override
+    public long getNetworkUsage (DigitalUnit unit) {
+        throw new UnsupportedOperationException("Unimplemented.");
+    }
+
+
+    @Override
+    public long getStorageUsage (DigitalUnit unit) {
+        throw new UnsupportedOperationException("Unimplemented.");
+    }
 }

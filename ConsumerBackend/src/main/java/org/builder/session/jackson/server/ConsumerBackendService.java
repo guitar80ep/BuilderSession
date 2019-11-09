@@ -5,6 +5,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.concurrent.ThreadLocalRandom;
 import java.util.stream.Collectors;
 
 import org.build.session.jackson.proto.Candidate;
@@ -39,7 +40,6 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 public final class ConsumerBackendService extends ConsumerBackendServiceGrpc.ConsumerBackendServiceImplBase {
 
-    private static final double INITIAL_TARGET = 0.33;
     private static final Duration INSTANCE_DISCOVERY_PACE = Duration.ofSeconds(15);
 
     @NonNull
@@ -49,23 +49,22 @@ public final class ConsumerBackendService extends ConsumerBackendServiceGrpc.Con
     @NonNull
     private final SimpleClient<List<ServiceRegistry.Instance>> registry;
     @NonNull
-    private final String host;
-    @NonNull
-    private final int port;
+    private final ServiceRegistry.Instance host;
 
     public ConsumerBackendService(@NonNull final String host,
                                   final int port,
                                   @NonNull final SystemUtil systemUtil,
                                   @NonNull final PIDConfig pidConfig,
                                   @NonNull String serviceDiscoveryId) {
-        this.host = host;
-        this.port = port;
+        this.host = new ServiceRegistry.Instance(host, port);
         this.registry = CachedClient.wrap(new ServiceRegistryImpl(serviceDiscoveryId), INSTANCE_DISCOVERY_PACE, true);
 
         // Setup consumers...
         consumers = ImmutableMap.<Resource, Consumer>builder()
-                .put(Resource.CPU, new CpuConsumer(INITIAL_TARGET, systemUtil, pidConfig))
-                .put(Resource.MEMORY, new MemoryConsumer(INITIAL_TARGET, systemUtil, pidConfig))
+                .put(Resource.CPU, new CpuConsumer(systemUtil, pidConfig))
+                .put(Resource.MEMORY, new MemoryConsumer(systemUtil, pidConfig))
+                //TODO: .put(Resource.NETWORK, new NetworkConsumer(systemUtil, pidConfig))
+                //TODO: .put(Resource.DISK, new DiskConsumer(systemUtil, pidConfig))
                 .build();
         consumers.forEach((r, c) -> workflow.consume(c));
     }
@@ -75,8 +74,13 @@ public final class ConsumerBackendService extends ConsumerBackendServiceGrpc.Con
         try {
             switch (request.getCandidate()) {
                 case SELF:
-                    responseObserver.onNext(consume(new ServiceRegistry.Instance(this.host, this.port),
-                                                    request));
+                    responseObserver.onNext(consume(this.host, request));
+                    break;
+                case RANDOM:
+                    List<ServiceRegistry.Instance> hostsForRandom = registry.call();
+                    int hostIndex = ThreadLocalRandom.current().nextInt(hostsForRandom.size());
+                    ServiceRegistry.Instance randomInstance = hostsForRandom.get(hostIndex);
+                    responseObserver.onNext(consume(randomInstance, request));
                     break;
                 case ALL:
                     List<ServiceRegistry.Instance> hosts = registry.call();
@@ -115,20 +119,19 @@ public final class ConsumerBackendService extends ConsumerBackendServiceGrpc.Con
      * Runs consume method for self if necessary or passes to other host.
      */
     protected ConsumeResponse consume(ServiceRegistry.Instance host, ConsumeRequest request) {
-        boolean isThisHostBeingInvoked = host.getAddress().equals(this.host)
-                && host.getPort() == this.port;
+        boolean isThisHostBeingInvoked = this.host.equals(host);
         List<UsageSpec> usages = Optional.ofNullable(request.getUsageList())
                                          .orElse(new ArrayList<>());
         if(isThisHostBeingInvoked) {
-            log.debug("Handling a call to this instance {}.", new ServiceRegistry.Instance(this.host, this.port));
+            log.debug("Handling a call to this instance {}.", this.host);
             for(UsageSpec usage : usages) {
                 Preconditions.checkArgument(Double.compare(0.0, usage.getActual()) == 0,
                                             "Cannot specify field [actual] in calls to consume().");
                 Optional<Consumer> consumer = Optional.of(consumers.get(usage.getResource()));
                 consumer.orElseThrow(() -> new IllegalStateException("Could not find consumer for " + usage))
-                        .setTargetPercentage(usage.getTarget(), usage.getUnit());
+                        .setTarget(usage.getTarget(), usage.getUnit());
             }
-            return onSingleSuccess();
+            return onSingleSuccess(usages);
         } else {
             log.debug("Propagating calls on to neighboring host {}", host);
             ConsumerBackendClient client = new ConsumerBackendClient(host.getAddress(), host.getPort());
@@ -136,15 +139,15 @@ public final class ConsumerBackendService extends ConsumerBackendServiceGrpc.Con
         }
     }
 
-    protected ConsumeResponse onSingleSuccess() {
+    protected ConsumeResponse onSingleSuccess(List<UsageSpec> usages) {
         return ConsumeResponse.newBuilder()
-                              .addInstances(this.getInstanceSummary())
+                              .addInstances(this.getInstanceSummary(usages))
                               .build();
     }
 
     protected ConsumeResponse onSingleFailure(ErrorCode error, String message) {
         return ConsumeResponse.newBuilder()
-                              .addInstances(this.getInstanceSummary())
+                              .addInstances(this.getInstanceSummary(new ArrayList<>()))
                               .addError(Error.newBuilder()
                                              .setType(error)
                                              .setMessage(message)
@@ -152,24 +155,33 @@ public final class ConsumerBackendService extends ConsumerBackendServiceGrpc.Con
                               .build();
     }
 
-    protected InstanceSummary getInstanceSummary() {
-        List<UsageSpec> usage = this.consumers.entrySet()
-                                              .stream()
-                                              .map(e -> convert(e.getKey(), e.getValue()))
-                                              .collect(Collectors.toList());
+    protected InstanceSummary getInstanceSummary(List<UsageSpec> usages) {
+        Map<Resource, Unit> resourceToUnitMap = usages.stream()
+                                                      .collect(Collectors.toMap(k -> k.getResource(),
+                                                                                v -> v.getUnit()));
+        //Gather resource usage for all consumers by the unit specified, if available.
+        List<UsageSpec> resolvedUsage = this.consumers.entrySet()
+                                                      .stream()
+                                                      .map(e -> {
+                                                          return convert(e.getKey(),
+                                                                         Optional.ofNullable(resourceToUnitMap.get(e.getKey())),
+                                                                         e.getValue());
+                                                      })
+                                                      .collect(Collectors.toList());
         return InstanceSummary.newBuilder()
-                              .setHost(this.host)
-                              .setPort(this.port)
-                              .addAllUsage(usage)
+                              .setHost(this.host.getAddress())
+                              .setPort(this.host.getPort())
+                              .addAllUsage(resolvedUsage)
                               .build();
     }
 
-    private UsageSpec convert(Resource resource, Consumer consumer) {
+    private UsageSpec convert(@NonNull Resource resource, @NonNull Optional<Unit> unit, @NonNull Consumer consumer) {
+        Unit resolvedUnit = unit.orElse(Unit.PERCENTAGE);
         return UsageSpec.newBuilder()
                         .setResource(resource)
-                        .setTarget(consumer.getTargetPercentage())
-                        .setActual(consumer.getActualPercentage())
-                        .setUnit(Unit.PERCENTAGE)
+                        .setTarget(consumer.getTarget(resolvedUnit))
+                        .setActual(consumer.getActual(resolvedUnit))
+                        .setUnit(resolvedUnit)
                         .build();
     }
 }

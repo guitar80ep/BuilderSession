@@ -1,46 +1,34 @@
 package org.builder.session.jackson.system;
 
-import lombok.RequiredArgsConstructor;
-
 public interface SystemUtil {
 
-    public long getFreeMemory(MemoryUnit unit);
-    public long getTotalMemory(MemoryUnit unit);
-    public long getUsedMemory(MemoryUnit unit);
+    public long getFreeMemory(DigitalUnit unit);
+    public long getTotalMemory(DigitalUnit unit);
+    public long getUsedMemory(DigitalUnit unit);
     public double getMemoryPercentage();
 
-    public double getCpuPercentage();
-    public long getCpuUnitsTotal();
-    public long getCpuUnitsUtilized ();
+    public long getTotalCpu (DigitalUnit unit);
+    public long getUsedCpu (DigitalUnit unit);
     public default long getUnitsPerProcessor() {
         return 1024;
     }
+    public double getCpuPercentage();
+
+    public long getNetworkUsage(DigitalUnit unit);
+
+    public long getStorageUsage(DigitalUnit unit);
 
     public default String toMemoryString() {
-        long usedMemory = this.getUsedMemory(SystemUtil.MemoryUnit.MEGABYTES);
-        long totalMemory = this.getTotalMemory(SystemUtil.MemoryUnit.MEGABYTES);
+        long usedMemory = this.getUsedMemory(DigitalUnit.MEGABYTES);
+        long totalMemory = this.getTotalMemory(DigitalUnit.MEGABYTES);
         double percentMemory = this.getMemoryPercentage();
         return "Profiled: [ MemoryUsed / MemoryTotal (%): " + usedMemory + "MB / " + totalMemory + "MB (" + percentMemory + ") ]";
     }
 
     public default String toCpuString() {
-        long usedCpu = this.getCpuUnitsUtilized();
-        long totalCpu = this.getCpuUnitsTotal();
-        double percentCpu = usedCpu / (double)totalCpu;
+        long usedCpu = this.getUsedCpu(DigitalUnit.VCPU);
+        long totalCpu = this.getTotalCpu(DigitalUnit.VCPU);
+        double percentCpu =DigitalUnit.VCPU.toPercentage(usedCpu, totalCpu);
         return"Profiled: [ CpuUsed / CpuTotal (%): " + usedCpu + "vCPU / " + totalCpu + "vCPU (" + percentCpu + ") ]";
-    }
-
-    @RequiredArgsConstructor
-    public enum MemoryUnit {
-        BYTES(1),
-        KILOBYTES(1024),
-        MEGABYTES(1024 * 1024),
-        GIGABYTES(1024 * 1024 * 1024);
-
-        private final long toBytesDivisor;
-
-        public static long convert(long value, MemoryUnit source, MemoryUnit goal) {
-            return (value * source.toBytesDivisor) / goal.toBytesDivisor ;
-        }
     }
 }

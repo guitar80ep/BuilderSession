@@ -20,25 +20,28 @@ public class OperatingSystemUtil implements SystemUtil {
     private final OperatingSystemMXBean system =  (OperatingSystemMXBean) ManagementFactoryHelper.getOperatingSystemMXBean();
 
     @Override
-    public long getFreeMemory (MemoryUnit unit) {
-        return MemoryUnit.convert(system.getFreePhysicalMemorySize(), MemoryUnit.BYTES, unit);
+    public long getFreeMemory (DigitalUnit unit) {
+        return unit.from(system.getFreePhysicalMemorySize(), DigitalUnit.BYTES);
     }
 
     @Override
-    public long getUsedMemory (MemoryUnit unit) {
-        return getTotalMemory(unit) - getFreeMemory(unit);
+    public long getUsedMemory (DigitalUnit unit) {
+        return unit.from(getTotalMemory(DigitalUnit.BYTES) - getFreeMemory(DigitalUnit.BYTES), DigitalUnit.BYTES);
     }
 
     @Override
-    public long getTotalMemory (MemoryUnit unit) {
-        return MemoryUnit.convert(system.getTotalPhysicalMemorySize(), MemoryUnit.BYTES, unit);
+    public long getTotalMemory (DigitalUnit unit) {
+        return unit.from(system.getTotalPhysicalMemorySize(), DigitalUnit.BYTES);
     }
 
     @Override
     public double getMemoryPercentage () {
-        return (double) getFreeMemory(MemoryUnit.BYTES)
-                / (double) getTotalMemory(MemoryUnit.BYTES);
+        return (double) getFreeMemory(DigitalUnit.BYTES)
+                / (double) getTotalMemory(DigitalUnit.BYTES);
     }
+
+
+
 
     @Override
     public double getCpuPercentage () {
@@ -46,12 +49,25 @@ public class OperatingSystemUtil implements SystemUtil {
     }
 
     @Override
-    public long getCpuUnitsTotal () {
-        return system.getAvailableProcessors() * this.getUnitsPerProcessor();
+    public long getTotalCpu (DigitalUnit unit) {
+        return unit.from(system.getAvailableProcessors() * this.getUnitsPerProcessor(), DigitalUnit.VCPU);
     }
 
     @Override
-    public long getCpuUnitsUtilized () {
-        return (long)( (double) this.getCpuUnitsTotal() * getCpuPercentage());
+    public long getUsedCpu (DigitalUnit unit) {
+        return unit.from((long)((double)this.getUsedCpu(DigitalUnit.VCPU) * getCpuPercentage()), DigitalUnit.VCPU);
+    }
+
+
+
+    @Override
+    public long getNetworkUsage (DigitalUnit unit) {
+        throw new UnsupportedOperationException("Unimplemented.");
+    }
+
+
+    @Override
+    public long getStorageUsage (DigitalUnit unit) {
+        throw new UnsupportedOperationException("Unimplemented.");
     }
 }

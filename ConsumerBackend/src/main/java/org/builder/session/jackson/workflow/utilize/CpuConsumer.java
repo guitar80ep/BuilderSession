@@ -12,11 +12,11 @@ import java.util.concurrent.atomic.AtomicLong;
 
 import org.build.session.jackson.proto.Unit;
 import org.builder.session.jackson.client.ecs.TaskMetadataClient;
+import org.builder.session.jackson.system.DigitalUnit;
 import org.builder.session.jackson.system.SystemUtil;
 
 import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableMap;
-import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Range;
 
 import lombok.Getter;
@@ -26,9 +26,8 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 public class CpuConsumer extends AbstractPidConsumer {
 
-    private static final ImmutableSet<Unit> COMPUTE_UNITS = ImmutableSet.of(Unit.PERCENTAGE,
-                                                                            Unit.VCPU);
-
+    private static final DigitalUnit BASE_UNIT = DigitalUnit.VCPU;
+    private static final double DEFAULT_INITIAL_TARGET = 0.33;
     private static final Duration PERIOD =
             Duration.ofMillis(Integer.parseInt(System.getenv("CONSUMER_CPU_PERIOD_IN_MILLIS")));
     private static final Comparator<AtomicLong> SMALLEST_TO_LARGEST = Comparator.comparingLong(a -> a.get());
@@ -49,6 +48,10 @@ public class CpuConsumer extends AbstractPidConsumer {
     @Getter
     private double targetPercentage;
 
+    public CpuConsumer(@NonNull final SystemUtil system,
+                          @NonNull final PIDConfig pidConfig) {
+        this(DEFAULT_INITIAL_TARGET, system, pidConfig);
+    }
 
     public CpuConsumer(double targetPercentage,
                        @NonNull SystemUtil system,
@@ -63,8 +66,8 @@ public class CpuConsumer extends AbstractPidConsumer {
         this.targetPercentage = targetPercentage;
         this.system = system;
         this.max = ImmutableMap.<Unit, Double>builder().put(Unit.PERCENTAGE, 1.0)
-                                                       .put(Unit.VCPU, (double)this.system.getCpuUnitsTotal())
-                                                       .build();
+                                            .put(Unit.VCPU, (double)this.system.getTotalCpu(DigitalUnit.VCPU))
+                                            .build();
 
         /**
          * To consume CPU, we have two slightly complex components. For each processor,
@@ -167,8 +170,10 @@ public class CpuConsumer extends AbstractPidConsumer {
     }
 
     @Override
-    public void setTargetPercentage (double value, @NonNull Unit unit) {
-        Preconditions.checkArgument(COMPUTE_UNITS.contains(unit), "Must specify a compute unit, but got " + unit);
+    public void setTarget (double value, @NonNull Unit unit) {
+        boolean isPercentage = DigitalUnit.isPercentage(unit);
+        Preconditions.checkArgument(isPercentage || BASE_UNIT.canConvertTo(DigitalUnit.from(unit)),
+                                    "Must specify a compute unit, but got " + unit);
         Preconditions.checkArgument(Range.open(0.0, max.get(unit)).contains(value),
                                     "Must specify a value in max (0.0, " + max.get(unit) + "), but got " + unit);
         log.info("Setting CPU consumption from " + this.targetPercentage + " to " + value + " at " + unit.name());
@@ -176,18 +181,28 @@ public class CpuConsumer extends AbstractPidConsumer {
     }
 
     @Override
-    public double getActualPercentage() {
-        return system.getCpuPercentage();
+    public double getTarget (Unit unit) {
+        boolean isPercentage = DigitalUnit.isPercentage(unit);
+        Preconditions.checkArgument(isPercentage || BASE_UNIT.canConvertTo(DigitalUnit.from(unit)),
+                                    "Must specify a compute unit, but got " + unit);
+        return isPercentage ? this.getTargetPercentage()
+                            : DigitalUnit.from(unit).from(getGoal(), DigitalUnit.VCPU);
+    }
+
+    @Override
+    public double getActual (Unit unit) {
+        return DigitalUnit.isPercentage(unit) ? this.system.getCpuPercentage()
+                                              : this.system.getUsedCpu(DigitalUnit.from(unit));
     }
 
     @Override
     protected long getGoal () {
-        return (long)(this.system.getCpuUnitsTotal() * this.getTargetPercentage());
+        return (long)(this.system.getTotalCpu(DigitalUnit.VCPU) * this.getTargetPercentage());
     }
 
     @Override
     protected long getConsumed () {
-        return this.system.getCpuUnitsUtilized();
+        return this.system.getUsedCpu(DigitalUnit.VCPU);
     }
 
     @Override

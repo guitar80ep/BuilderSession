@@ -54,6 +54,8 @@ enum Candidate {
     ALL = 0;
     // Refers to the receiver of this message.
     SELF = 1;
+    // Refers to a random consumer in the stack. The receiver chooses this random candidate.
+    RANDOM = 2;
 }
 
 /*
@@ -62,6 +64,8 @@ The resource that can be consumed.
 enum Resource {
     CPU = 0;
     MEMORY = 1;
+    NETWORK = 2;
+    DISK = 3;
 }
 
 /*
@@ -75,6 +79,10 @@ enum Unit {
     KILOBYTES = 65;
     MEGABYTES = 66;
     GIGABYTES = 67;
+
+    BYTES_PER_SECOND = 32;
+    KILOBYTES_PER_SECOND = 33;
+    MEGABYTES_PER_SECOND = 34;
 
     VCPU = 128;
 }

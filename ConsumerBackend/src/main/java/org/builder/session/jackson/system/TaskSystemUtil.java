@@ -34,11 +34,11 @@ public class TaskSystemUtil implements SystemUtil {
         try {
             //Perform some simple validation for our system to confirm that it is properly setup.
             //TODO: Improve how this sleep time is setup to only do it on initialization...
-            Thread.sleep(WAIT_TIME.toMillis());
             TaskStats initialStats = pollStats();
             TaskMetadata initialMetadata = pollMetadata();
-            long reservedContainerCpu = getCpuUnitsTotal();
-            long reservedContainerMemory = getTotalMemory(MemoryUnit.BYTES);
+            Thread.sleep(WAIT_TIME.toMillis());
+            long reservedContainerCpu = getTotalCpu(DigitalUnit.VCPU);
+            long reservedContainerMemory = getTotalMemory(DigitalUnit.BYTES);
         } catch (Throwable t) {
             throw new ConsumerInternalException("Failed while starting up TaskSystemUtil.", t);
         }
@@ -82,33 +82,28 @@ public class TaskSystemUtil implements SystemUtil {
     }
 
     @Override
-    public long getFreeMemory(MemoryUnit unit) {
-        TaskStats stats = this.pollStats();
-        return MemoryUnit.convert(getTotalMemory(MemoryUnit.BYTES) - getUsedMemory(MemoryUnit.BYTES),
-                MemoryUnit.BYTES,
-                unit);
+    public long getFreeMemory(DigitalUnit unit) {
+        return unit.from(getTotalMemory(DigitalUnit.BYTES) - getUsedMemory(DigitalUnit.BYTES),
+                         DigitalUnit.BYTES);
     }
 
-    public long getTotalMemory(MemoryUnit unit) {
-        return MemoryUnit.convert(getTaskLimit(MEMORY_LIMIT_KEY),
-                                  MemoryUnit.MEGABYTES,
-                                  unit);
+    public long getTotalMemory(DigitalUnit unit) {
+        return unit.from(getTaskLimit(MEMORY_LIMIT_KEY), DigitalUnit.MEGABYTES);
     }
 
-    public long getUsedMemory(MemoryUnit unit) {
-        return MemoryUnit.convert(this.pollStats()
-                                      .getContainers()
-                                      .values()
-                                      .stream()
-                                      .mapToLong(c -> c.getMemoryStats().getUsage())
-                                      .sum(),
-                                  MemoryUnit.BYTES,
-                                  unit);
+    public long getUsedMemory(DigitalUnit unit) {
+        return unit.from(this.pollStats()
+                                       .getContainers()
+                                       .values()
+                                       .stream()
+                                       .mapToLong(c -> c.getMemoryStats().getUsage())
+                                       .sum(),
+                                   DigitalUnit.BYTES);
     }
 
     public double getMemoryPercentage() {
-        return (double)getUsedMemory(MemoryUnit.BYTES) /
-                (double)getTotalMemory(MemoryUnit.BYTES);
+        return (double)getUsedMemory(DigitalUnit.BYTES) /
+                (double)getTotalMemory(DigitalUnit.BYTES);
     }
 
     public double getCpuPercentageOfSystemUsedByThisTask() {
@@ -135,7 +130,7 @@ public class TaskSystemUtil implements SystemUtil {
                               .findFirst().get()
                               .getCpuStats()
                               .getOnlineCpus();
-        return (double)getCpuUnitsTotal()
+        return (double)getTotalCpu(DigitalUnit.VCPU)
                 / (double)(processors * getUnitsPerProcessor());
     }
 
@@ -145,14 +140,27 @@ public class TaskSystemUtil implements SystemUtil {
                 / getCpuPercentageAllocatedToThisTask();
     }
 
-    public long getCpuUnitsTotal() {
-        return this.getTaskLimit(CPU_LIMIT_KEY);
+    @Override
+    public long getTotalCpu(DigitalUnit unit) {
+        return unit.from(this.getTaskLimit(CPU_LIMIT_KEY), DigitalUnit.VCPU);
     }
 
-    public long getCpuUnitsUtilized () {
+    @Override
+    public long getUsedCpu (DigitalUnit unit) {
         // If we have our container is using 50% of it's reserved limit and a CPU using
-        return (long)(this.getCpuPercentage() * getCpuUnitsTotal());
+        return unit.from((long)(this.getCpuPercentage() * getUsedCpu(DigitalUnit.VCPU)), DigitalUnit.VCPU);
     }
 
 
+
+    @Override
+    public long getNetworkUsage (DigitalUnit unit) {
+        throw new UnsupportedOperationException("Unimplemented.");
+    }
+
+
+    @Override
+    public long getStorageUsage (DigitalUnit unit) {
+        throw new UnsupportedOperationException("Unimplemented.");
+    }
 }
