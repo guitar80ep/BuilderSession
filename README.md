@@ -14,7 +14,7 @@ To setup the service in your ECS account, you merely perform a few simple steps.
 2. **Setup your Cloudformation stack.**
     * Navigate to the Cloudformation console in your region of choice. Click CreateStack.
     * Copy the Cloudformation template from ConsumerInfrastructure into the template definition.
-    * Choose your parameters, but keep DesiredCount of Tasks set to 0 for the moment.
+    * Choose your parameters, but keep DesiredCount of Tasks set to 0 for the moment. Make sure to select a valid ecsTaskExecutionRole (specified by ARN from IAM Console).
     * Click Create and wait for the stack to start up and complete its update.
 3. **Build your images in CodeBuild.**
     * Navigate to the CodeBuild console and to your Projects section in your region of choice.
