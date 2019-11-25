@@ -15,6 +15,7 @@ import org.builder.session.jackson.exception.ConsumerInternalException;
 import org.builder.session.jackson.utils.RateTracker;
 
 import com.google.common.base.Preconditions;
+import com.google.common.collect.Maps;
 
 import lombok.extern.slf4j.Slf4j;
 
@@ -56,7 +57,12 @@ public class TaskSystemUtil implements SystemUtil {
                                                            .getContainers()
                                                            .values()
                                                            .stream()
-                                                           .flatMap(c -> c.getNetworkStats().values().stream())
+                                                           // Network metrics sometimes begin as NULL.
+                                                           .flatMap(c -> Optional.ofNullable(c.getNetworkStats())
+                                                                                 .orElseGet(() -> Maps.newHashMap())
+                                                                                 .values()
+                                                                                 .stream())
+                                                           // We just track written bytes since roughly Read == Write at the moment.
                                                            .mapToDouble(i -> i.getTransmittedBytes())
                                                            .sum(),
                                                  RATE_POLLING_PERIOD);
@@ -65,6 +71,7 @@ public class TaskSystemUtil implements SystemUtil {
                                                            .values()
                                                            .stream()
                                                            .flatMap(c -> c.getStorageStats().getVolumes().stream())
+                                                           // We just track written bytes since roughly Read == Write at the moment.
                                                            .filter(v -> OPERATION_FOR_STORAGE.equals(v.getOperation()))
                                                            .mapToDouble(v -> v.getValue())
                                                            .sum(),
