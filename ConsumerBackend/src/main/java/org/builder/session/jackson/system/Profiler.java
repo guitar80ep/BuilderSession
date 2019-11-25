@@ -14,6 +14,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
 
 import org.build.session.jackson.proto.Resource;
+import org.builder.session.jackson.utils.StatTracker;
 
 import com.google.common.collect.ImmutableMap;
 import com.google.common.util.concurrent.AtomicDouble;
@@ -81,7 +82,7 @@ public class Profiler implements Closeable {
                 Resource resource = e.getKey();
                 StatTracker stat = e.getValue();
                 double currentValue = RESOURCES_TO_PROFILE.get(resource).apply(utilToProfile);
-                if(Double.compare(currentValue, stat.getPrevious()) != 0) {
+                if(Double.compare(currentValue, stat.getLatest().getValue()) != 0) {
                     //We have a change or an update!!
                     Instant timeNow = Instant.now();
                     Instant previousRefresh = lastRefreshMap.put(resource, timeNow);

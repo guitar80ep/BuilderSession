@@ -1,7 +1,9 @@
 package org.builder.session.jackson.system;
 
 import java.util.HashSet;
+import java.util.Optional;
 import java.util.Set;
+import java.util.concurrent.TimeUnit;
 
 import org.build.session.jackson.proto.Unit;
 
@@ -13,30 +15,48 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public enum DigitalUnit {
 
-    BYTES(Unit.BYTES, Unit.BYTES, 1),
-    KILOBYTES(Unit.BYTES, Unit.KILOBYTES, 1024),
-    MEGABYTES(Unit.BYTES, Unit.MEGABYTES, 1024 * 1024),
-    GIGABYTES(Unit.BYTES, Unit.GIGABYTES, 1024 * 1024 * 1024),
+    BYTES(Unit.BYTES, Unit.BYTES, 1, Optional.empty()),
+    KILOBYTES(Unit.BYTES, Unit.KILOBYTES, 1024, Optional.empty()),
+    MEGABYTES(Unit.BYTES, Unit.MEGABYTES, 1024 * 1024, Optional.empty()),
+    GIGABYTES(Unit.BYTES, Unit.GIGABYTES, 1024 * 1024 * 1024, Optional.empty()),
 
-    BYTES_PER_SECOND(Unit.BYTES_PER_SECOND, Unit.BYTES_PER_SECOND, 1),
-    KILOBYTES_PER_SECOND(Unit.BYTES_PER_SECOND, Unit.KILOBYTES_PER_SECOND, 1024),
-    MEGABYTES_PER_SECOND(Unit.BYTES_PER_SECOND, Unit.MEGABYTES_PER_SECOND, 1024 * 1024),
+    BYTES_PER_SECOND(Unit.BYTES_PER_SECOND, Unit.BYTES_PER_SECOND, 1, Optional.of(TimeUnit.SECONDS)),
+    KILOBYTES_PER_SECOND(Unit.BYTES_PER_SECOND, Unit.KILOBYTES_PER_SECOND, 1024, Optional.of(TimeUnit.SECONDS)),
+    MEGABYTES_PER_SECOND(Unit.BYTES_PER_SECOND, Unit.MEGABYTES_PER_SECOND, 1024 * 1024, Optional.of(TimeUnit.SECONDS)),
 
-    VCPU(Unit.VCPU, Unit.VCPU, 1);
+    VCPU(Unit.VCPU, Unit.VCPU, 1, Optional.empty());
 
     @NonNull
     private final Unit baseMeasure;
     @NonNull
     private final Unit unit;
     private final long magnitudeToBase;
+    private final Optional<TimeUnit> rateUnitOfTime;
+
+    public boolean isRate() {
+        return rateUnitOfTime.isPresent();
+    }
+
+    public TimeUnit getTimeUnit() {
+        return rateUnitOfTime.orElseThrow(() -> {
+            return new IllegalArgumentException("Cannot request a unit of time for a non-rate unit.");
+        });
+    }
 
     /**
      * Convert to this unit from the specified value and unit.
      */
-    public long from(long value, @NonNull DigitalUnit goal) {
-        Preconditions.checkArgument(this.baseMeasure == goal.baseMeasure,
-                                    "Cannot convert betweem " + this.name() + " and " + goal.name());
-        return (value * this.magnitudeToBase) / (goal.magnitudeToBase);
+    public double from(double value, @NonNull DigitalUnit unitOfValue) {
+        Preconditions.checkArgument(this.baseMeasure == unitOfValue.baseMeasure,
+                                    "Cannot convert from " + this.name() + " to " + unitOfValue.name());
+        return (value * (double)unitOfValue.magnitudeToBase) / (double)this.magnitudeToBase;
+    }
+
+    /**
+     * Convert to this unit from the specified value and unit. Truncated rounding.
+     */
+    public long from(long value, @NonNull DigitalUnit unitOfValue) {
+        return (long)this.from(value, unitOfValue);
     }
 
     /**

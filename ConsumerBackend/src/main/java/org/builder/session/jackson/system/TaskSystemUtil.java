@@ -3,6 +3,7 @@ package org.builder.session.jackson.system;
 import java.time.Duration;
 import java.util.List;
 import java.util.Optional;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 import org.builder.session.jackson.client.SimpleClient;
@@ -11,6 +12,9 @@ import org.builder.session.jackson.client.messages.TaskMetadata;
 import org.builder.session.jackson.client.messages.TaskStats;
 import org.builder.session.jackson.exception.ConsumerDependencyException;
 import org.builder.session.jackson.exception.ConsumerInternalException;
+import org.builder.session.jackson.utils.RateTracker;
+
+import com.google.common.base.Preconditions;
 
 import lombok.extern.slf4j.Slf4j;
 
@@ -26,12 +30,19 @@ public class TaskSystemUtil implements SystemUtil {
     private static final String CPU_LIMIT_KEY = "CPU";
     private static final Duration CACHE_TIME = Duration.ofMillis(100);
     private static final Duration WAIT_TIME = Duration.ofSeconds(30);
+    private static final Duration RATE_POLLING_PERIOD = Duration.ofSeconds(20);
+    public static final String OPERATION_FOR_STORAGE = "Write";
 
-    private final SimpleClient<TaskMetadata> metadataClient = TaskMetadataClient.createTaskMetadataClient(CACHE_TIME);
-    private final SimpleClient<TaskStats> statsClient = TaskMetadataClient.createTaskStatsClient(CACHE_TIME);
+    private final SimpleClient<TaskMetadata> metadataClient;
+    private final SimpleClient<TaskStats> statsClient;
+    private final RateTracker networkRateTracker;
+    private final RateTracker storageRateTracker;
 
     public TaskSystemUtil () {
         try {
+            metadataClient = TaskMetadataClient.createTaskMetadataClient(CACHE_TIME);
+            statsClient = TaskMetadataClient.createTaskStatsClient(CACHE_TIME);
+
             //Perform some simple validation for our system to confirm that it is properly setup.
             //TODO: Improve how this sleep time is setup to only do it on initialization...
             TaskStats initialStats = pollStats();
@@ -39,6 +50,25 @@ public class TaskSystemUtil implements SystemUtil {
             Thread.sleep(WAIT_TIME.toMillis());
             long reservedContainerCpu = getTotalCpu(DigitalUnit.VCPU);
             long reservedContainerMemory = getTotalMemory(DigitalUnit.BYTES);
+
+            //Setup rate trackers.
+            networkRateTracker = new RateTracker(() -> this.pollStats()
+                                                           .getContainers()
+                                                           .values()
+                                                           .stream()
+                                                           .flatMap(c -> c.getNetworkStats().values().stream())
+                                                           .mapToDouble(i -> i.getTransmittedBytes())
+                                                           .sum(),
+                                                 RATE_POLLING_PERIOD);
+            storageRateTracker = new RateTracker(() -> this.pollStats()
+                                                           .getContainers()
+                                                           .values()
+                                                           .stream()
+                                                           .flatMap(c -> c.getStorageStats().getVolumes().stream())
+                                                           .filter(v -> OPERATION_FOR_STORAGE.equals(v.getOperation()))
+                                                           .mapToDouble(v -> v.getValue())
+                                                           .sum(),
+                                                 RATE_POLLING_PERIOD);
         } catch (Throwable t) {
             throw new ConsumerInternalException("Failed while starting up TaskSystemUtil.", t);
         }
@@ -148,19 +178,25 @@ public class TaskSystemUtil implements SystemUtil {
     @Override
     public long getUsedCpu (DigitalUnit unit) {
         // If we have our container is using 50% of it's reserved limit and a CPU using
-        return unit.from((long)(this.getCpuPercentage() * getUsedCpu(DigitalUnit.VCPU)), DigitalUnit.VCPU);
-    }
-
-
-
-    @Override
-    public long getNetworkUsage (DigitalUnit unit) {
-        throw new UnsupportedOperationException("Unimplemented.");
+        return unit.from((long)(this.getCpuPercentage() * getTotalCpu(DigitalUnit.VCPU)), DigitalUnit.VCPU);
     }
 
 
     @Override
     public long getStorageUsage (DigitalUnit unit) {
-        throw new UnsupportedOperationException("Unimplemented.");
+        Preconditions.checkArgument(unit.isRate(), "Expected a rate based metric.");
+        return unit.from(networkRateTracker.getLatestRate(TimeUnit.SECONDS)
+                                           .map(d -> (long)Math.round(d))
+                                           .orElse(0L),
+                         DigitalUnit.BYTES_PER_SECOND);
+    }
+
+    @Override
+    public long getNetworkUsage (DigitalUnit unit) {
+        Preconditions.checkArgument(unit.isRate(), "Expected a rate based metric.");
+        return unit.from(storageRateTracker.getLatestRate(TimeUnit.SECONDS)
+                                           .map(d -> (long)Math.round(d))
+                                           .orElse(0L),
+                         DigitalUnit.BYTES_PER_SECOND);
     }
 }

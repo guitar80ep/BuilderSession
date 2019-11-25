@@ -43,8 +43,6 @@ public class MemoryConsumer extends AbstractPidConsumer {
                           @NonNull final SystemUtil system,
                           @NonNull final PIDConfig pidConfig) {
         super(pidConfig);
-        Preconditions.checkArgument(0.0 <= targetPercentage && targetPercentage <= 1.0, "Must be between 0.0 and 1.0.");
-        this.targetPercentage = targetPercentage;
         this.system = system;
         this.max = ImmutableMap.<org.build.session.jackson.proto.Unit, Double>builder()
                 .put(org.build.session.jackson.proto.Unit.PERCENTAGE, 1.0)
@@ -53,6 +51,7 @@ public class MemoryConsumer extends AbstractPidConsumer {
                 .put(org.build.session.jackson.proto.Unit.MEGABYTES, (double)this.system.getTotalMemory(DigitalUnit.MEGABYTES))
                 .put(org.build.session.jackson.proto.Unit.GIGABYTES, (double) this.system.getTotalMemory(DigitalUnit.GIGABYTES))
                 .build();
+        setTarget(targetPercentage, Unit.PERCENTAGE);
     }
 
     @Override

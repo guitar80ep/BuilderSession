@@ -59,15 +59,14 @@ public class OperatingSystemUtil implements SystemUtil {
     }
 
 
-
     @Override
     public long getNetworkUsage (DigitalUnit unit) {
         throw new UnsupportedOperationException("Unimplemented.");
     }
 
-
     @Override
     public long getStorageUsage (DigitalUnit unit) {
         throw new UnsupportedOperationException("Unimplemented.");
     }
+
 }

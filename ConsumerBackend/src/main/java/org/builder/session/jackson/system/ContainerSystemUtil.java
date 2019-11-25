@@ -2,6 +2,7 @@ package org.builder.session.jackson.system;
 
 import java.time.Duration;
 import java.util.Optional;
+import java.util.concurrent.TimeUnit;
 
 import org.builder.session.jackson.client.SimpleClient;
 import org.builder.session.jackson.client.ecs.TaskMetadataClient;
@@ -10,6 +11,9 @@ import org.builder.session.jackson.client.messages.ContainerStats;
 import org.builder.session.jackson.client.messages.TaskMetadata;
 import org.builder.session.jackson.exception.ConsumerDependencyException;
 import org.builder.session.jackson.exception.ConsumerInternalException;
+import org.builder.session.jackson.utils.RateTracker;
+
+import com.google.common.base.Preconditions;
 
 import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
@@ -27,9 +31,14 @@ public class ContainerSystemUtil implements SystemUtil {
     private static final String CPU_LIMIT_KEY = "CPU";
     private static final Duration CACHE_TIME = Duration.ofMillis(200);
     private static final Duration WAIT_TIME = Duration.ofSeconds(20);
+    private static final Duration RATE_POLLING_PERIOD = Duration.ofSeconds(20);
+    public static final String OPERATION_FOR_STORAGE = "Write";
 
     private final SimpleClient<TaskMetadata> metadataClient = TaskMetadataClient.createTaskMetadataClient(CACHE_TIME);
     private final SimpleClient<ContainerStats> statsClient = TaskMetadataClient.createContainerStatsClient(CACHE_TIME);
+
+    private final RateTracker networkRateTracker;
+    private final RateTracker storageRateTracker;
 
     public ContainerSystemUtil() {
         try {
@@ -46,6 +55,23 @@ public class ContainerSystemUtil implements SystemUtil {
             if (reservedContainerMemory <= 0) {
                 throw new IllegalArgumentException("Container monitoring cannot be performed without a hard container reservation limit on Memory.");
             }
+
+            //Setup rate trackers.
+            networkRateTracker = new RateTracker(() -> this.pollStats()
+                                                           .getNetworkStats()
+                                                           .values()
+                                                           .stream()
+                                                           .mapToDouble(i -> i.getTransmittedBytes())
+                                                           .sum(),
+                                                 RATE_POLLING_PERIOD);
+            storageRateTracker = new RateTracker(() -> this.pollStats()
+                                                           .getStorageStats()
+                                                           .getVolumes()
+                                                           .stream()
+                                                           .filter(v -> OPERATION_FOR_STORAGE.equals(v.getOperation()))
+                                                           .mapToDouble(v -> v.getValue())
+                                                           .sum(),
+                                                 RATE_POLLING_PERIOD);
         } catch (Throwable t) {
             throw new ConsumerInternalException("Failed while starting up ContainerSystemUtil.", t);
         }
@@ -149,13 +175,20 @@ public class ContainerSystemUtil implements SystemUtil {
 
 
     @Override
-    public long getNetworkUsage (DigitalUnit unit) {
-        throw new UnsupportedOperationException("Unimplemented.");
+    public long getStorageUsage (DigitalUnit unit) {
+        Preconditions.checkArgument(unit.isRate(), "Expected a rate based metric.");
+        return unit.from(networkRateTracker.getLatestRate(TimeUnit.SECONDS)
+                                           .map(d -> (long)Math.round(d))
+                                           .orElse(0L),
+                         DigitalUnit.BYTES_PER_SECOND);
     }
 
-
     @Override
-    public long getStorageUsage (DigitalUnit unit) {
-        throw new UnsupportedOperationException("Unimplemented.");
+    public long getNetworkUsage (DigitalUnit unit) {
+        Preconditions.checkArgument(unit.isRate(), "Expected a rate based metric.");
+        return unit.from(storageRateTracker.getLatestRate(TimeUnit.SECONDS)
+                                           .map(d -> (long)Math.round(d))
+                                           .orElse(0L),
+                         DigitalUnit.BYTES_PER_SECOND);
     }
 }

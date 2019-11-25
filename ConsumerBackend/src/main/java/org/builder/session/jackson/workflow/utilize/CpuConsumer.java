@@ -61,13 +61,12 @@ public class CpuConsumer extends AbstractPidConsumer {
                                                           .call()
                                                           .getCpuStats()
                                                           .getOnlineCpus();
-        Preconditions.checkArgument(0.0 <= targetPercentage && targetPercentage <= 1.0, "Must be between 0.0 and 1.0.");
         Preconditions.checkArgument(hostProcessorCount > 0, "Processor count must be positive.");
-        this.targetPercentage = targetPercentage;
         this.system = system;
         this.max = ImmutableMap.<Unit, Double>builder().put(Unit.PERCENTAGE, 1.0)
                                             .put(Unit.VCPU, (double)this.system.getTotalCpu(DigitalUnit.VCPU))
                                             .build();
+        this.setTarget(targetPercentage, Unit.PERCENTAGE);
 
         /**
          * To consume CPU, we have two slightly complex components. For each processor,

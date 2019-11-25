@@ -27,7 +27,9 @@ import org.builder.session.jackson.system.SystemUtil;
 import org.builder.session.jackson.workflow.Workflow;
 import org.builder.session.jackson.workflow.utilize.Consumer;
 import org.builder.session.jackson.workflow.utilize.CpuConsumer;
+import org.builder.session.jackson.workflow.utilize.DiskConsumer;
 import org.builder.session.jackson.workflow.utilize.MemoryConsumer;
+import org.builder.session.jackson.workflow.utilize.NetworkConsumer;
 import org.builder.session.jackson.workflow.utilize.PIDConfig;
 
 import com.google.common.base.Preconditions;
@@ -63,8 +65,8 @@ public final class ConsumerBackendService extends ConsumerBackendServiceGrpc.Con
         consumers = ImmutableMap.<Resource, Consumer>builder()
                 .put(Resource.CPU, new CpuConsumer(systemUtil, pidConfig))
                 .put(Resource.MEMORY, new MemoryConsumer(systemUtil, pidConfig))
-                //TODO: .put(Resource.NETWORK, new NetworkConsumer(systemUtil, pidConfig))
-                //TODO: .put(Resource.DISK, new DiskConsumer(systemUtil, pidConfig))
+                .put(Resource.NETWORK, new NetworkConsumer(systemUtil, pidConfig))
+                .put(Resource.DISK, new DiskConsumer(systemUtil, pidConfig))
                 .build();
         consumers.forEach((r, c) -> workflow.consume(c));
     }
