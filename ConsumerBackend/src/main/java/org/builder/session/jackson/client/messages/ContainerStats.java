@@ -149,31 +149,6 @@ public class ContainerStats {
         }
     }
 
-    /**
-     * "blkio_stats": {
-     *     "io_service_bytes_recursive": [
-     *         {
-     *             "major": 259,
-     *             "minor": 0,
-     *             "op": "Read",
-     *             "value": 16039936
-     *         },
-     *         {
-     *             "major": 259,
-     *             "minor": 0,
-     *             "op": "Write",
-     *             "value": 122880
-     *         },
-     *         {
-     *             "major": 259,
-     *             "minor": 0,
-     *             "op": "Sync",
-     *             "value": 16052224
-     *         }
-     *     ]
-     * }
-     */
-
     @Data
     @Builder
     public static class StorageStats {

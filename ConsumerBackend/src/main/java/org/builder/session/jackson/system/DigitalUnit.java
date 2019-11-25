@@ -56,7 +56,7 @@ public enum DigitalUnit {
      * Convert to this unit from the specified value and unit. Truncated rounding.
      */
     public long from(long value, @NonNull DigitalUnit unitOfValue) {
-        return (long)this.from(value, unitOfValue);
+        return (long)this.from((double)value, unitOfValue);
     }
 
     /**
