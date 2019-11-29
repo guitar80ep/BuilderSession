@@ -63,12 +63,9 @@ public final class ConsumerBackendService extends ConsumerBackendServiceGrpc.Con
     public void consume (ConsumeRequest request, StreamObserver<ConsumeResponse> responseObserver) {
         try {
             Candidate candidate = request.getCandidate();
-            ServiceRegistry.Instance hostSpecified = new ServiceRegistry.Instance(Optional.ofNullable(request.getHost())
-                                                                                          .orElse(this.host.getAddress()),
-                                                                                  this.host.getPort());
             switch (candidate) {
                 case SELF:
-                    responseObserver.onNext(consume(hostSpecified, request));
+                    responseObserver.onNext(consume(this.host, request));
                     break;
                 case RANDOM:
                     List<ServiceRegistry.Instance> hostsForRandom = registry.call();
@@ -76,6 +73,12 @@ public final class ConsumerBackendService extends ConsumerBackendServiceGrpc.Con
                     ServiceRegistry.Instance randomInstance = hostsForRandom.get(hostIndex);
                     responseObserver.onNext(consume(randomInstance, request));
                     break;
+                case SPECIFIC:
+                    ServiceRegistry.Instance selectedInstance = new ServiceRegistry.Instance(request.getHost(),
+                                                                                             request.getPort());
+                    List<ServiceRegistry.Instance> hostsForValidation = registry.call();
+                    Preconditions.checkArgument(hostsForValidation.stream().anyMatch(i -> i.equals(selectedInstance)));
+                    responseObserver.onNext(consume(selectedInstance, request));
                 case ALL:
                     List<ServiceRegistry.Instance> hosts = registry.call();
                     List<ConsumeResponse> responses = hosts.parallelStream()
@@ -112,12 +115,12 @@ public final class ConsumerBackendService extends ConsumerBackendServiceGrpc.Con
     /**
      * Runs consume method for self if necessary or passes to other host.
      */
-    protected ConsumeResponse consume(ServiceRegistry.Instance host, ConsumeRequest request) {
-        boolean isThisHostBeingInvoked = this.host.equals(host);
+    protected ConsumeResponse consume(ServiceRegistry.Instance targetHost, ConsumeRequest request) {
+        boolean isThisHostBeingInvoked = this.host.equals(targetHost);
         List<UsageSpec> usages = Optional.ofNullable(request.getUsageList())
                                          .orElse(new ArrayList<>());
         if(isThisHostBeingInvoked) {
-            log.debug("Handling a call to this instance {}.", this.host);
+            log.info("Handling a call to this instance {}.", this.host);
             for(UsageSpec usage : usages) {
                 Preconditions.checkArgument(Double.compare(0.0, usage.getActual()) == 0,
                                             "Cannot specify field [actual] in calls to consume().");
@@ -127,8 +130,9 @@ public final class ConsumerBackendService extends ConsumerBackendServiceGrpc.Con
             }
             return onSingleSuccess(usages);
         } else {
-            log.debug("Propagating calls on to neighboring host {}", host);
-            ConsumerBackendClient client = new ConsumerBackendClient(host.getAddress(), host.getPort());
+            log.info("Propagating calls on to neighboring host {}", targetHost);
+            ConsumerBackendClient client = new ConsumerBackendClient(targetHost.getAddress(),
+                                                                     targetHost.getPort());
             return client.call(request);
         }
     }

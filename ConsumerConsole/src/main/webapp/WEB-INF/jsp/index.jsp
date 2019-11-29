@@ -1,3 +1,4 @@
+<%@ page import="java.net.InetAddress" %>
 <%@ page import="java.util.List" %>
 <%@ page import="org.build.session.jackson.proto.Candidate" %>
 <%@ page import="org.build.session.jackson.proto.ConsumeRequest" %>
@@ -12,7 +13,6 @@
 <%@ page import="org.builder.session.jackson.utils.JsonHelper" %>
 <%@ page import="org.springframework.context.ApplicationContext" %>
 <%@ page import="org.springframework.web.servlet.support.RequestContextUtils" %>
-<%@ page import="software.amazon.awssdk.utils.StringUtils" %>
 <%@ taglib uri="http://java.sun.com/jsp/jstl/core" prefix="core"%>
 <%@ page contentType="text/html;charset=UTF-8" language="java" %>
 <%@ taglib prefix = "consumer" uri = "/WEB-INF/tld/consumer.tld"%>
@@ -42,14 +42,13 @@
             ConsumeRequest.Builder msg = ConsumeRequest.newBuilder();
 
             Candidate candidate = Candidate.valueOf(request.getParameter(HostViewTag.Input.Candidate.name()));
-            String hostAddress = request.getParameter(HostViewTag.Input.HostAddress.name());
-            String hostPort = request.getParameter(HostViewTag.Input.HostPort.name());
 
             msg.setCandidate(candidate);
-            if(Candidate.SELF.equals(candidate)
-                    && !StringUtils.isBlank(hostAddress)
-                    &&  !StringUtils.isBlank(hostPort)) {
-                msg.setHost(hostAddress + ":" + hostPort);
+            if(Candidate.SPECIFIC.equals(candidate)) {
+                String hostAddress = request.getParameter(HostViewTag.Input.HostAddress.name());
+                String hostPort = request.getParameter(HostViewTag.Input.HostPort.name());
+                msg.setHost(hostAddress);
+                msg.setPort(Integer.parseInt(hostPort));
             }
 
             for (Resource resource : Resource.values()) {
@@ -79,6 +78,13 @@
 
         // Calculate an "Average" instance for use with the ALL candidate.
         InstanceSummary avgInstance = InstanceUtils.calculateAverage("ALL", instances.size(), instances);
+
+        String localHost = "Unknown";
+        try {
+            localHost = InetAddress.getLocalHost().toString();
+        } catch (Throwable t) {
+            localHost += " (Error: " + t.toString() + ")";
+        }
     %>
 
     <body>
@@ -92,6 +98,8 @@
             Users can choose to edit a SPECIFIC host, ALL hosts or a RANDOM host. Edit fields
             in the category of interest and hit "Submit." This page will refresh to show the
             new service state.
+
+            You are talking to <%= localHost %>.
         </p>
         <br/>
 
@@ -110,7 +118,7 @@
             <p>Change a specfic hosts' target consumption.</p>
             <c:forEach items="<%= instances %>" var="hostToView" >
                 <form action="index.jsp" method="post">
-                    <consumer:HostView instance="${hostToView}" candidate="<%= Candidate.SELF %>"/>
+                    <consumer:HostView instance="${hostToView}" candidate="<%= Candidate.SPECIFIC %>"/>
                 </form>
             </c:forEach>
         </div>
@@ -125,7 +133,7 @@
         <div id="Random" class="tabcontent">
             <p>Change a random host's target consumption.</p>
             <form action="index.jsp" method="post">
-                <consumer:HostView instance="<%= randomInstance %>" candidate="<%= Candidate.SELF %>"/>
+                <consumer:HostView instance="<%= randomInstance %>" candidate="<%= Candidate.SPECIFIC %>"/>
             </form>
         </div>
 

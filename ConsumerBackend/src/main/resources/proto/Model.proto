@@ -19,8 +19,9 @@ service ConsumerBackendService {
 
 message ConsumeRequest {
     Candidate candidate = 1;
-    string host = 2;
-    repeated UsageSpec usage = 3;
+    string host = 2; //Optional for selecting a specific target. Candidate must be SPECIFIC.
+    int32 port = 3;  //Optional for selecting a specific target. Candidate must be SPECIFIC.
+    repeated UsageSpec usage = 4;
 }
 
 message ConsumeResponse {
@@ -53,10 +54,12 @@ The candidate who will operate on the message.
 enum Candidate {
     // Refers to all consumers. This message will be distributed/shared.
     ALL = 0;
-    // Refers to the receiver of this message or a specified host added as a parameter.
+    // Refers to the receiver of this message.
     SELF = 1;
     // Refers to a random consumer in the stack. The receiver chooses this random candidate.
     RANDOM = 2;
+    // Refers to a specific consumer in the stack. The sender chooses this explicitly.
+    SPECIFIC = 3;
 }
 
 /*
