@@ -33,7 +33,8 @@ import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
-public final class ConsumerBackendService extends ConsumerBackendServiceGrpc.ConsumerBackendServiceImplBase {
+public final class ConsumerBackendService extends ConsumerBackendServiceGrpc.ConsumerBackendServiceImplBase
+        implements AutoCloseable {
 
     private static final Duration INSTANCE_DISCOVERY_PACE = Duration.ofSeconds(15);
 
@@ -176,5 +177,10 @@ public final class ConsumerBackendService extends ConsumerBackendServiceGrpc.Con
                         .setActual(consumer.getActual(resolvedUnit))
                         .setUnit(resolvedUnit)
                         .build();
+    }
+
+    @Override
+    public void close() {
+        workflow.close();
     }
 }

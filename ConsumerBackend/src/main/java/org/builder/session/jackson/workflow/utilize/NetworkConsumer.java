@@ -144,4 +144,17 @@ public class NetworkConsumer extends AbstractPidConsumer {
         Preconditions.checkArgument(Math.abs(scale) <= (long)Integer.MAX_VALUE, "Scale should be integer size.");
         scaleAdjustment.addAndGet((int)-scale);
     }
+
+    @Override
+    public void close () {
+        try {
+            executor.shutdown();
+            writerSocket.close();
+            readerSocket.close();
+            server.close();
+        } catch (Throwable t) {
+            throw new RuntimeException("Failed to close NetworkConsumer.", t);
+        }
+        super.close();
+    }
 }

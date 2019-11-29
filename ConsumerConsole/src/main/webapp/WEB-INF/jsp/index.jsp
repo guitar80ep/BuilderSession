@@ -12,6 +12,7 @@
 <%@ page import="org.builder.session.jackson.utils.JsonHelper" %>
 <%@ page import="org.springframework.context.ApplicationContext" %>
 <%@ page import="org.springframework.web.servlet.support.RequestContextUtils" %>
+<%@ page import="software.amazon.awssdk.utils.StringUtils" %>
 <%@ taglib uri="http://java.sun.com/jsp/jstl/core" prefix="core"%>
 <%@ page contentType="text/html;charset=UTF-8" language="java" %>
 <%@ taglib prefix = "consumer" uri = "/WEB-INF/tld/consumer.tld"%>
@@ -42,12 +43,12 @@
 
             Candidate candidate = Candidate.valueOf(request.getParameter(HostViewTag.Input.Candidate.name()));
             String hostAddress = request.getParameter(HostViewTag.Input.HostAddress.name());
-            String hostPort = request.getParameter(HostViewTag.Input.HostAddress.name());
+            String hostPort = request.getParameter(HostViewTag.Input.HostPort.name());
 
             msg.setCandidate(candidate);
             if(Candidate.SELF.equals(candidate)
-                    && hostAddress != null
-                    && hostPort != null) {
+                    && !StringUtils.isBlank(hostAddress)
+                    &&  !StringUtils.isBlank(hostPort)) {
                 msg.setHost(hostAddress + ":" + hostPort);
             }
 

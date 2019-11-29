@@ -15,7 +15,7 @@ import lombok.NonNull;
 import lombok.RequiredArgsConstructor;
 
 @RequiredArgsConstructor
-public class Workflow {
+public class Workflow implements AutoCloseable {
     private final ExecutorService executor = Executors.newCachedThreadPool();
     private final ConcurrentHashMap<String, ConsumerHandle> consumers = new ConcurrentHashMap<>();
 
@@ -37,6 +37,15 @@ public class Workflow {
     public void cancel(@NonNull String name) {
         Optional<ConsumerHandle> handle = Optional.ofNullable(consumers.remove(name));
         handle.ifPresent(h -> h.cancel());
+    }
+
+    @Override
+    public void close () {
+        while(consumers.size() > 0) {
+            for(String key : consumers.keySet()) {
+                Optional.ofNullable(consumers.remove(key)).ifPresent(ConsumerHandle::cancel);
+            }
+        }
     }
 
     @RequiredArgsConstructor

@@ -34,6 +34,7 @@ public class DiskConsumer extends AbstractPidConsumer {
     private static final long DEFAULT_INITIAL_TARGET = 512000;
     private static final Duration WRITE_PACE = Duration.ofMillis(50);
     private static final Duration SWAP_PACE = Duration.ofSeconds(5);
+    private static final int FILE_BUFFER_SIZE = 3;
 
     @Getter
     private final String name = "DiskConsumer";
@@ -43,6 +44,8 @@ public class DiskConsumer extends AbstractPidConsumer {
     private final ScheduledExecutorService executor;
     @NonNull
     private final AtomicInteger scaleAdjustment = new AtomicInteger(0);
+    @NonNull
+    private final List<File> fileBuffer = new ArrayList<>(FILE_BUFFER_SIZE);
     @Getter
     private long targetRate;
 
@@ -57,13 +60,12 @@ public class DiskConsumer extends AbstractPidConsumer {
         this.executor = Executors.newScheduledThreadPool(4);
 
         //Prepare file buffers for data transfer.
-        List<File> fileBuffer = new ArrayList<>(3);
         AtomicInteger fileRef = new AtomicInteger(0);
         try {
             for (int i = 0; i < 3; i++) {
                 File file = FileUtilities.createTempFile(Optional.of("DiskConsumer" + i));
                 fileBuffer.add(file);
-                FileUtilities.reset(file);
+                FileUtilities.reset(file, true);
             }
         } catch (Throwable t) {
             throw new ConsumerInternalException("Failed to start DiskConsumer.", t);
@@ -72,27 +74,37 @@ public class DiskConsumer extends AbstractPidConsumer {
         //Start Writer
         this.executor.scheduleAtFixedRate(() -> {
             try {
-                File file = fileBuffer.get(fileRef.get());
-                int dataSize = scaleAdjustment.get();
-                byte[] data = new byte[dataSize > 0 ? dataSize : 0];
-                ThreadLocalRandom.current().nextBytes(data);
-                OutputStream output = new FileOutputStream(file);
-                output.write(data);
-                output.close();
+                File fileToWrite = fileBuffer.get(calculateIndex(fileRef.get(), FILE_BUFFER_SIZE, 0));
+                // Only one file reads, writes or deletes at a given time.
+                // This should be limited anyway due to the indexing.
+                synchronized (fileToWrite) {
+                    try (OutputStream output = new FileOutputStream(fileToWrite)) {
+                        int dataSize = scaleAdjustment.get();
+                        byte[] data = new byte[dataSize > 0 ? dataSize : 0];
+                        ThreadLocalRandom.current().nextBytes(data);
+                        output.write(data);
+                    }
+                }
             } catch (Throwable t) {
                 log.error("Encountered error in DiskConsumer Writer.", t);
+            } finally {
+
             }
         }, 0, WRITE_PACE.toMillis(), TimeUnit.MILLISECONDS);
 
         //Start Reader
         this.executor.scheduleAtFixedRate(() -> {
             try {
-                File file = fileBuffer.get(fileRef.get());
-                InputStream input = new FileInputStream(file);
-                while (input.available() > 0) {
-                    input.read(new byte[input.available()]);
+                File fileToRead = fileBuffer.get(calculateIndex(fileRef.get(), FILE_BUFFER_SIZE, 1));
+                // Only one file reads, writes or deletes at a given time.
+                // This should be limited anyway due to the indexing.
+                synchronized (fileToRead) {
+                    try (InputStream input = new FileInputStream(fileToRead)) {
+                        while (input.available() > 0) {
+                            input.read(new byte[input.available()]);
+                        }
+                    }
                 }
-                input.close();
             } catch (Throwable t) {
                 log.error("Encountered error in DiskConsumer Writer.", t);
             }
@@ -102,13 +114,27 @@ public class DiskConsumer extends AbstractPidConsumer {
         this.executor.scheduleAtFixedRate(() -> {
             try {
                 //Swap file pointer...
-                int oldFileIndex = fileRef.getAndUpdate(i -> i == 2 ? 0 : i + 1);
-                //Erase next file...
-                FileUtilities.reset(fileBuffer.get(oldFileIndex));
+                fileRef.getAndUpdate(i -> calculateIndex(i, FILE_BUFFER_SIZE, 1));
+                File fileToDelete = fileBuffer.get(calculateIndex(fileRef.get(), FILE_BUFFER_SIZE, 2));
+                // Only one file reads, writes or deletes at a given time.
+                // This should be limited anyway due to the indexing.
+                synchronized (fileToDelete) {
+                    //Erase next file...
+                    FileUtilities.reset(fileToDelete, true);
+                }
             } catch (Throwable t) {
                 log.error("Encountered error in DiskConsumer Swapper.", t);
             }
         }, 0, SWAP_PACE.toMillis(), TimeUnit.MILLISECONDS);
+    }
+
+    private int calculateIndex(int index, int size, int offset) {
+        Preconditions.checkArgument(index >= 0 && index < size,
+                                    "Index " + index + " was out of bounds for size " + size);
+        Preconditions.checkArgument(offset < size,
+                                    "The offset (" + offset + ") must be less than the size " + size);
+        int rawIndex = index + offset;
+        return offset > 0 ? rawIndex - size : rawIndex + size;
     }
 
     @Override
@@ -158,5 +184,15 @@ public class DiskConsumer extends AbstractPidConsumer {
         Preconditions.checkArgument(scale >= 0, "Scale should be greater than or equal to zero.");
         Preconditions.checkArgument(Math.abs(scale) <= (long)Integer.MAX_VALUE, "Scale should be integer size.");
         scaleAdjustment.addAndGet((int)-scale);
+    }
+
+    @Override
+    public void close () {
+        try {
+            executor.shutdown();
+        } catch (Throwable t) {
+            throw new RuntimeException("Failed to close NetworkConsumer.", t);
+        }
+        super.close();
     }
 }

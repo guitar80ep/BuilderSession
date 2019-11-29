@@ -30,11 +30,14 @@ public class FileUtilities {
         }
     }
 
-    public static void reset(@NonNull final File file) {
+    public static void reset(@NonNull final File file, boolean deleteOnExit) {
         delete(file);
         create(file);
         setReadPermissions(file, true);
         setWritePermissions(file, true);
+        if(deleteOnExit) {
+            file.deleteOnExit();
+        }
     }
 
     public static void create(@NonNull final File file) {

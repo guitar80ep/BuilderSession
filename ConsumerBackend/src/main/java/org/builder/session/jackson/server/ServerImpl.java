@@ -24,6 +24,8 @@ public class ServerImpl implements Server {
     private final String host;
     @NonNull
     private final io.grpc.Server server;
+    @NonNull
+    private final ConsumerBackendService service;
 
     public ServerImpl (@NonNull final int port,
                        @NonNull final Map<Resource, Consumer> consumers,
@@ -32,12 +34,13 @@ public class ServerImpl implements Server {
                                     "Port must be within the range [0, 65535], but was " + port);
         this.host = HostnameUtils.resolveIpAddress();
         this.port = port;
-        ConsumerBackendService consumerService = new ConsumerBackendService(this.host,
-                                                                            this.port,
-                                                                            consumers,
-                                                                            serviceDiscoveryId);
+        this.service = new ConsumerBackendService(this.host,
+                                                  this.port,
+                                                  consumers,
+                                                  serviceDiscoveryId);
         server = ServerBuilder.forPort(port)
-                              .addService(consumerService).build();
+                              .addService(this.service)
+                              .build();
     }
 
     public void start() throws IOException {
@@ -47,7 +50,7 @@ public class ServerImpl implements Server {
     }
 
     @Override
-    public void close () throws IOException {
+    public void close () {
         if(!server.isShutdown()) {
             log.info("Trying to stop server on " + port + ".");
             server.shutdown();
@@ -55,5 +58,7 @@ public class ServerImpl implements Server {
         } else {
             log.info("Skipping server shutdown. Server already terminated on " + port + ".");
         }
+
+        service.close();
     }
 }
