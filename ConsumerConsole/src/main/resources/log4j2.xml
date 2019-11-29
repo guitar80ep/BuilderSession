@@ -15,6 +15,5 @@
         <Logger name="org.builder.session.jackson.client" level="DEBUG" additivity="false">
             <AppenderRef ref="Console"/>
         </Logger>
-
     </Loggers>
 </Configuration>

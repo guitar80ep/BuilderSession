@@ -17,6 +17,7 @@ import org.build.session.jackson.proto.UsageSpec;
 import org.builder.session.jackson.client.consumer.ConsumerBackendClient;
 import org.builder.session.jackson.console.tags.HostViewTag;
 import org.builder.session.jackson.exception.ConsumerDependencyException;
+import org.builder.session.jackson.utils.JsonHelper;
 
 import lombok.AccessLevel;
 import lombok.NoArgsConstructor;
@@ -56,6 +57,8 @@ public final class RequestUtils {
                                           .build());
                 }
             }
+
+            log.info("Sending/Saving a change request: {}", JsonHelper.toSingleLine(msg.build()));
 
             return Optional.of(client.call(msg.build()));
         } else {
