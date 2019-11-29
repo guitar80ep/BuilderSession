@@ -9,7 +9,7 @@ import java.util.concurrent.Future;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import org.build.session.jackson.proto.Unit;
 import org.builder.session.jackson.exception.ConsumerInternalException;
@@ -43,7 +43,7 @@ public class NetworkConsumer extends AbstractPidConsumer {
     @NonNull
     private final ScheduledExecutorService executor;
     @NonNull
-    private final AtomicLong scaleAdjustment = new AtomicLong(0);
+    private final AtomicInteger scaleAdjustment = new AtomicInteger(0);
     @Getter
     private long targetRate;
 
@@ -73,7 +73,8 @@ public class NetworkConsumer extends AbstractPidConsumer {
         //Start Writer
         this.executor.scheduleAtFixedRate(() -> {
             try {
-                byte[] data = new byte[(int) scaleAdjustment.get()];
+                int dataSize = scaleAdjustment.get();
+                byte[] data = new byte[dataSize > 0 ? dataSize : 0];
                 ThreadLocalRandom.current().nextBytes(data);
                 writerSocket.getOutputStream().write(data);
             } catch (Throwable t) {
@@ -133,12 +134,14 @@ public class NetworkConsumer extends AbstractPidConsumer {
     @Override
     protected void generateLoad (long scale) {
         Preconditions.checkArgument(scale >= 0, "Scale should be greater than or equal to zero.");
-        scaleAdjustment.addAndGet(scale);
+        Preconditions.checkArgument(Math.abs(scale) <= (long)Integer.MAX_VALUE, "Scale should be integer size.");
+        scaleAdjustment.addAndGet((int)scale);
     }
 
     @Override
     protected void destroyLoad (long scale) {
         Preconditions.checkArgument(scale >= 0, "Scale should be greater than or equal to zero.");
-        scaleAdjustment.addAndGet(-scale);
+        Preconditions.checkArgument(Math.abs(scale) <= (long)Integer.MAX_VALUE, "Scale should be integer size.");
+        scaleAdjustment.addAndGet((int)-scale);
     }
 }

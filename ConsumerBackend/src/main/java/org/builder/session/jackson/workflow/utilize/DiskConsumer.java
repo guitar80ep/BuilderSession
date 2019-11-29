@@ -14,7 +14,6 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.atomic.AtomicLong;
 
 import org.build.session.jackson.proto.Unit;
 import org.builder.session.jackson.exception.ConsumerInternalException;
@@ -43,7 +42,7 @@ public class DiskConsumer extends AbstractPidConsumer {
     @NonNull
     private final ScheduledExecutorService executor;
     @NonNull
-    private final AtomicLong scaleAdjustment = new AtomicLong(0);
+    private final AtomicInteger scaleAdjustment = new AtomicInteger(0);
     @Getter
     private long targetRate;
 
@@ -74,7 +73,8 @@ public class DiskConsumer extends AbstractPidConsumer {
         this.executor.scheduleAtFixedRate(() -> {
             try {
                 File file = fileBuffer.get(fileRef.get());
-                byte[] data = new byte[(int) scaleAdjustment.get()];
+                int dataSize = scaleAdjustment.get();
+                byte[] data = new byte[dataSize > 0 ? dataSize : 0];
                 ThreadLocalRandom.current().nextBytes(data);
                 OutputStream output = new FileOutputStream(file);
                 output.write(data);
@@ -101,8 +101,10 @@ public class DiskConsumer extends AbstractPidConsumer {
         //Start Swapper
         this.executor.scheduleAtFixedRate(() -> {
             try {
-                fileRef.getAndUpdate(i -> i == 2 ? 0 : i + 1);
-                FileUtilities.reset(fileBuffer.get(fileRef.get() + 1));
+                //Swap file pointer...
+                int oldFileIndex = fileRef.getAndUpdate(i -> i == 2 ? 0 : i + 1);
+                //Erase next file...
+                FileUtilities.reset(fileBuffer.get(oldFileIndex));
             } catch (Throwable t) {
                 log.error("Encountered error in DiskConsumer Swapper.", t);
             }
@@ -147,12 +149,14 @@ public class DiskConsumer extends AbstractPidConsumer {
     @Override
     protected void generateLoad (long scale) {
         Preconditions.checkArgument(scale >= 0, "Scale should be greater than or equal to zero.");
-        scaleAdjustment.addAndGet(scale);
+        Preconditions.checkArgument(Math.abs(scale) <= (long)Integer.MAX_VALUE, "Scale should be integer size.");
+        scaleAdjustment.addAndGet((int)scale);
     }
 
     @Override
     protected void destroyLoad (long scale) {
         Preconditions.checkArgument(scale >= 0, "Scale should be greater than or equal to zero.");
-        scaleAdjustment.addAndGet(-scale);
+        Preconditions.checkArgument(Math.abs(scale) <= (long)Integer.MAX_VALUE, "Scale should be integer size.");
+        scaleAdjustment.addAndGet((int)-scale);
     }
 }
