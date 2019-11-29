@@ -134,7 +134,11 @@ public class DiskConsumer extends AbstractPidConsumer {
         Preconditions.checkArgument(offset < size,
                                     "The offset (" + offset + ") must be less than the size " + size);
         int rawIndex = index + offset;
-        return offset > 0 ? rawIndex - size : rawIndex + size;
+        if(rawIndex < 0 || rawIndex >= size) {
+            return offset > 0 ? rawIndex - size : rawIndex + size;
+        } else {
+            return rawIndex + offset;
+        }
     }
 
     @Override
