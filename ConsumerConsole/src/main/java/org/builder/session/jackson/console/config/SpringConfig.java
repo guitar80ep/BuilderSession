@@ -11,6 +11,9 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 import org.springframework.web.servlet.view.InternalResourceViewResolver;
 import org.springframework.web.servlet.view.JstlView;
 
+import lombok.extern.slf4j.Slf4j;
+
+@Slf4j
 @EnableWebMvc
 @Configuration
 @ComponentScan({"org.builder.session.jackson.console"})
@@ -38,6 +41,7 @@ public class SpringConfig implements WebMvcConfigurer {
     public ConsumerBackendClient backendClient() {
         String host = System.getenv("CONSUMER_BACKEND_IP");
         int port = Integer.parseInt(System.getenv("CONSUMER_BACKEND_PORT"));
+        log.info("Created new backend client to self: " + host + ":" + port);
         return new ConsumerBackendClient(host, port);
     }
 }

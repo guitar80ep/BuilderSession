@@ -1,15 +1,10 @@
-<%@ page import="java.net.InetAddress" %>
 <%@ page import="java.util.List" %>
 <%@ page import="org.build.session.jackson.proto.Candidate" %>
-<%@ page import="org.build.session.jackson.proto.ConsumeRequest" %>
 <%@ page import="org.build.session.jackson.proto.ConsumeResponse" %>
 <%@ page import="org.build.session.jackson.proto.InstanceSummary" %>
-<%@ page import="org.build.session.jackson.proto.Resource" %>
-<%@ page import="org.build.session.jackson.proto.Unit" %>
-<%@ page import="org.build.session.jackson.proto.UsageSpec" %>
 <%@ page import="org.builder.session.jackson.client.consumer.ConsumerBackendClient" %>
-<%@ page import="org.builder.session.jackson.console.tags.HostViewTag" %>
 <%@ page import="org.builder.session.jackson.console.util.InstanceUtils" %>
+<%@ page import="org.builder.session.jackson.console.util.RequestUtils" %>
 <%@ page import="org.builder.session.jackson.utils.JsonHelper" %>
 <%@ page import="org.springframework.context.ApplicationContext" %>
 <%@ page import="org.springframework.web.servlet.support.RequestContextUtils" %>
@@ -23,10 +18,6 @@
         <base href="${pageContext.request.contextPath}">
         <title>Consumer Service Console</title>
 
-        <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
-        <meta http-equiv="Pragma" content="no-cache" />
-        <meta http-equiv="Expires" content="0" />
-
         <link href="resources/css/default.css" type="text/css" rel="stylesheet" >
         <link href="resources/css/tab.css" type="text/css" rel="stylesheet" >
         <link href="resources/css/table.css" type="text/css" rel="stylesheet" >
@@ -38,40 +29,9 @@
         ConsumeResponse result = null;
         List<InstanceSummary> instances = null;
         try (ConsumerBackendClient client = (ConsumerBackendClient) ac.getBean("backendClient")) {
-            if(request.getParameter(HostViewTag.Input.Candidate.name()) != null) {
-                ConsumeRequest.Builder msg = ConsumeRequest.newBuilder();
-
-                Candidate candidate = Candidate.valueOf(request.getParameter(HostViewTag.Input.Candidate.name()));
-
-                msg.setCandidate(candidate);
-                if(Candidate.SPECIFIC.equals(candidate)) {
-                    String hostAddress = request.getParameter(HostViewTag.Input.HostAddress.name());
-                    String hostPort = request.getParameter(HostViewTag.Input.HostPort.name());
-                    msg.setHost(hostAddress);
-                    msg.setPort(Integer.parseInt(hostPort));
-                }
-
-                for (Resource resource : Resource.values()) {
-                    HostViewTag.Input saveEnum = HostViewTag.Input.find(resource, "Save");
-                    HostViewTag.Input valueEnum = HostViewTag.Input.find(resource, "Value");
-                    HostViewTag.Input unitEnum = HostViewTag.Input.find(resource, "Unit");
-
-                    if(request.getParameter(saveEnum.name()) != null) {
-                        Unit unit = Unit.valueOf(request.getParameter(unitEnum.name()));
-                        double value = Double.parseDouble(request.getParameter(valueEnum.name()));
-                        msg.addUsage(UsageSpec.newBuilder()
-                                              .setResource(resource)
-                                              .setUnit(unit)
-                                              .setTarget(value)
-                                              .build());
-                    }
-                }
-
-                result = client.call(msg.build());
-            }
-
-            instances = InstanceUtils.describe(client);
-            instances = InstanceUtils.sort(instances);
+            RequestUtils.request(request, client);
+            instances = RequestUtils.describe(client);
+            instances = RequestUtils.sort(instances);
         }
 
         // Choose a random instance
@@ -79,13 +39,6 @@
 
         // Calculate an "Average" instance for use with the ALL candidate.
         InstanceSummary avgInstance = InstanceUtils.calculateAverage("ALL", instances.size(), instances);
-
-        String localHost = "Unknown";
-        try {
-            localHost = InetAddress.getLocalHost().toString();
-        } catch (Throwable t) {
-            localHost += " (Error: " + t.toString() + ")";
-        }
     %>
 
     <body>
@@ -100,7 +53,7 @@
             in the category of interest and hit "Submit." This page will refresh to show the
             new service state.
 
-            You are talking to <%= localHost %>.
+            You are talking to <%= RequestUtils.getHostname() %>.
         </p>
         <br/>
 

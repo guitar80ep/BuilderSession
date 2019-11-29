@@ -1,7 +1,6 @@
 package org.builder.session.jackson.console.util;
 
 import java.util.Collection;
-import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -9,14 +8,9 @@ import java.util.concurrent.ThreadLocalRandom;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
-import org.build.session.jackson.proto.Candidate;
-import org.build.session.jackson.proto.ConsumeRequest;
-import org.build.session.jackson.proto.ConsumeResponse;
 import org.build.session.jackson.proto.InstanceSummary;
 import org.build.session.jackson.proto.Resource;
 import org.build.session.jackson.proto.UsageSpec;
-import org.builder.session.jackson.client.consumer.ConsumerBackendClient;
-import org.builder.session.jackson.exception.ConsumerDependencyException;
 
 import lombok.AccessLevel;
 import lombok.NoArgsConstructor;
@@ -24,22 +18,6 @@ import software.amazon.awssdk.utils.Validate;
 
 @NoArgsConstructor(access = AccessLevel.NONE)
 public final class InstanceUtils {
-
-    public static List<InstanceSummary> describe(ConsumerBackendClient client) {
-        ConsumeResponse response = client.call(ConsumeRequest.newBuilder()
-                                                             .setCandidate(Candidate.ALL)
-                                                             .build());
-        if(!response.getErrorList().isEmpty()) {
-            throw new ConsumerDependencyException("Failed to describe: " + response);
-        } else {
-            return response.getInstancesList();
-        }
-    }
-
-    public static List<InstanceSummary> sort(List<InstanceSummary> instances) {
-        instances.sort(Comparator.comparing(i -> i.getHost() + ":" + i.getPort()));
-        return instances;
-    }
 
     public static InstanceSummary getRandomInstance(List<InstanceSummary> instances) {
         return instances.get(ThreadLocalRandom.current()
