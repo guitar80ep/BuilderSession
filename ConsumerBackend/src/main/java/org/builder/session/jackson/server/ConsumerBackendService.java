@@ -74,9 +74,13 @@ public final class ConsumerBackendService extends ConsumerBackendServiceGrpc.Con
     @Override
     public void consume (ConsumeRequest request, StreamObserver<ConsumeResponse> responseObserver) {
         try {
-            switch (request.getCandidate()) {
+            Candidate candidate = request.getCandidate();
+            ServiceRegistry.Instance hostSpecified = new ServiceRegistry.Instance(Optional.ofNullable(request.getHost())
+                                                                                          .orElse(this.host.getAddress()),
+                                                                                  this.host.getPort());
+            switch (candidate) {
                 case SELF:
-                    responseObserver.onNext(consume(this.host, request));
+                    responseObserver.onNext(consume(hostSpecified, request));
                     break;
                 case RANDOM:
                     List<ServiceRegistry.Instance> hostsForRandom = registry.call();
@@ -178,7 +182,7 @@ public final class ConsumerBackendService extends ConsumerBackendServiceGrpc.Con
     }
 
     private UsageSpec convert(@NonNull Resource resource, @NonNull Optional<Unit> unit, @NonNull Consumer consumer) {
-        Unit resolvedUnit = unit.orElse(Unit.PERCENTAGE);
+        Unit resolvedUnit = unit.orElse(consumer.getDefaultUnit());
         return UsageSpec.newBuilder()
                         .setResource(resource)
                         .setTarget(consumer.getTarget(resolvedUnit))

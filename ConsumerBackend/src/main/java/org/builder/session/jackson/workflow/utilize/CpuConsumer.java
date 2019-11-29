@@ -195,6 +195,11 @@ public class CpuConsumer extends AbstractPidConsumer {
     }
 
     @Override
+    public Unit getDefaultUnit () {
+        return Unit.PERCENTAGE;
+    }
+
+    @Override
     protected long getGoal () {
         return (long)(this.system.getTotalCpu(DigitalUnit.VCPU) * this.getTargetPercentage());
     }

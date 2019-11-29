@@ -34,14 +34,17 @@ public class ContainerSystemUtil implements SystemUtil {
     private static final Duration RATE_POLLING_PERIOD = Duration.ofSeconds(20);
     public static final String OPERATION_FOR_STORAGE = "Write";
 
-    private final SimpleClient<TaskMetadata> metadataClient = TaskMetadataClient.createTaskMetadataClient(CACHE_TIME);
-    private final SimpleClient<ContainerStats> statsClient = TaskMetadataClient.createContainerStatsClient(CACHE_TIME);
+    private final SimpleClient<TaskMetadata> metadataClient;
+    private final SimpleClient<ContainerStats> statsClient;
 
     private final RateTracker networkRateTracker;
     private final RateTracker storageRateTracker;
 
     public ContainerSystemUtil() {
         try {
+            metadataClient = TaskMetadataClient.createTaskMetadataClient(CACHE_TIME);
+            statsClient = TaskMetadataClient.createContainerStatsClient(CACHE_TIME);
+
             //Perform some simple validation for our system to confirm that it is properly setup.
             //TODO: Improve how this sleep time is setup to only do it on initialization...
             ContainerStats initialStats = pollStats();

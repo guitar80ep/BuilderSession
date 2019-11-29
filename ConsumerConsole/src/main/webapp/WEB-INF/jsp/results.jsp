@@ -56,6 +56,6 @@
     <body>
         <h1>Consumer Console</h1>
         <h4>Results from <%= HostnameUtils.resolveIpAddress() %></h4>
-        <pre><%=JsonHelper.format(consumeResult).trim()%></pre>
+        <pre><%=JsonHelper.format(consumeResult.getInstances(0)).trim()%></pre>
     </body>
 </html>

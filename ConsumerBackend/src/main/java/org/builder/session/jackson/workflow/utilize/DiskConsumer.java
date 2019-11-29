@@ -32,7 +32,7 @@ import lombok.extern.slf4j.Slf4j;
 public class DiskConsumer extends AbstractPidConsumer {
 
     private static final DigitalUnit BASE_UNIT = DigitalUnit.BYTES;
-    private static final long DEFAULT_INITIAL_TARGET = 256;
+    private static final long DEFAULT_INITIAL_TARGET = 512000;
     private static final Duration WRITE_PACE = Duration.ofMillis(50);
     private static final Duration SWAP_PACE = Duration.ofSeconds(5);
 
@@ -125,6 +125,11 @@ public class DiskConsumer extends AbstractPidConsumer {
     @Override
     public double getActual (Unit unit) {
         return this.system.getNetworkUsage(DigitalUnit.from(unit));
+    }
+
+    @Override
+    public Unit getDefaultUnit () {
+        return Unit.BYTES;
     }
 
     @Override

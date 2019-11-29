@@ -78,6 +78,11 @@ public class MemoryConsumer extends AbstractPidConsumer {
     }
 
     @Override
+    public Unit getDefaultUnit () {
+        return Unit.PERCENTAGE;
+    }
+
+    @Override
     protected long getGoal () {
         return (long)(this.system.getTotalMemory(DigitalUnit.MEGABYTES) * this.getTargetPercentage());
     }

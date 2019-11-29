@@ -21,6 +21,13 @@
             </includes>
         </fileSet>
         <fileSet>
+            <directory>${project.basedir}/src/main/webapp/resources</directory>
+            <outputDirectory>resources</outputDirectory>
+            <includes>
+                <include>/**/*</include>
+            </includes>
+        </fileSet>
+        <fileSet>
             <directory>${project.basedir}/src/main/webapp/WEB-INF</directory>
             <outputDirectory>WEB-INF</outputDirectory>
             <includes>

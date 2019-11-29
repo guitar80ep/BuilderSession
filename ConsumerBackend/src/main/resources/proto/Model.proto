@@ -19,7 +19,8 @@ service ConsumerBackendService {
 
 message ConsumeRequest {
     Candidate candidate = 1;
-    repeated UsageSpec usage = 2;
+    string host = 2;
+    repeated UsageSpec usage = 3;
 }
 
 message ConsumeResponse {
@@ -52,7 +53,7 @@ The candidate who will operate on the message.
 enum Candidate {
     // Refers to all consumers. This message will be distributed/shared.
     ALL = 0;
-    // Refers to the receiver of this message.
+    // Refers to the receiver of this message or a specified host added as a parameter.
     SELF = 1;
     // Refers to a random consumer in the stack. The receiver chooses this random candidate.
     RANDOM = 2;
