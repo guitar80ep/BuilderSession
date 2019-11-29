@@ -4,6 +4,7 @@ import org.builder.session.jackson.client.consumer.ConsumerBackendClient;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.ComponentScan;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Scope;
 import org.springframework.web.servlet.config.annotation.EnableWebMvc;
 import org.springframework.web.servlet.config.annotation.ResourceHandlerRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
@@ -33,6 +34,7 @@ public class SpringConfig implements WebMvcConfigurer {
 
 
     @Bean(name = "backendClient")
+    @Scope(scopeName = "prototype")
     public ConsumerBackendClient backendClient() {
         String host = System.getenv("CONSUMER_BACKEND_IP");
         int port = Integer.parseInt(System.getenv("CONSUMER_BACKEND_PORT"));

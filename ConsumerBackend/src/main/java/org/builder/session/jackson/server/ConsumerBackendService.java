@@ -131,9 +131,10 @@ public final class ConsumerBackendService extends ConsumerBackendServiceGrpc.Con
             return onSingleSuccess(usages);
         } else {
             log.info("Propagating calls on to neighboring host {}", targetHost);
-            ConsumerBackendClient client = new ConsumerBackendClient(targetHost.getAddress(),
-                                                                     targetHost.getPort());
-            return client.call(request);
+            try (ConsumerBackendClient client = new ConsumerBackendClient(targetHost.getAddress(),
+                                                                          targetHost.getPort())) {
+                return client.call(request);
+            }
         }
     }
 

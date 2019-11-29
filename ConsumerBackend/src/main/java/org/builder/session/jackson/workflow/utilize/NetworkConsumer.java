@@ -28,7 +28,6 @@ public class NetworkConsumer extends AbstractPidConsumer {
     private static final DigitalUnit BASE_UNIT = DigitalUnit.BYTES_PER_SECOND;
     private static final long DEFAULT_INITIAL_TARGET = 512000;
     private static final Duration TRANSMIT_PACE = Duration.ofMillis(50);
-    private static final int PORT = 9876;
 
     @Getter
     private final String name = "NetworkConsumer";
@@ -57,17 +56,17 @@ public class NetworkConsumer extends AbstractPidConsumer {
         this.setTarget(targetRateInBytes, getDefaultUnit());
 
         //Setup Web Socket connection with loopback.
+        int dynamicPort = 0;
         try {
             this.executor = Executors.newScheduledThreadPool(4);
-            this.server = new ServerSocket(PORT);
-            Thread.sleep(TRANSMIT_PACE.toMillis());
+            this.server = new ServerSocket(0);
             Future<Socket> future = executor.submit(() -> this.server.accept());
             Thread.sleep(TRANSMIT_PACE.toMillis());
-            this.readerSocket = new Socket(InetAddress.getByName(null).getHostName(), PORT);
-            Thread.sleep(TRANSMIT_PACE.toMillis());
+            dynamicPort = server.getLocalPort();
+            this.readerSocket = new Socket(InetAddress.getByName(null).getHostName(), dynamicPort);
             this.writerSocket = future.get();
         } catch (Throwable t) {
-            throw new ConsumerInternalException("Failed to start NetworkConsumer on port: " + PORT, t);
+            throw new ConsumerInternalException("Failed to start NetworkConsumer on port: " + dynamicPort, t);
         }
 
         //Start Writer

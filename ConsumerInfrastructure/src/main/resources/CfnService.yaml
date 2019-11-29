@@ -16,8 +16,8 @@ Parameters:
   TaskNetworkMode:
     Type: String
     Default: "host"
-    AllowedValues: [host, awsvpc]
-    ConstraintDescription: Please choose a valid network mode from [host, awsvpc].
+    AllowedValues: [host, awsvpc, bridge]
+    ConstraintDescription: Please choose a valid network mode from [host, awsvpc, bridge].
     Description: Required. The selected network mode for the Task. Only
       allows versions that will work with this template.
   ConsolePort:
@@ -129,6 +129,8 @@ Conditions:
   HasConsoleMemory: !Not [ !Equals [!Ref 'ConsoleMemory', ''] ]
   HasBackendCpu: !Not [ !Equals [!Ref 'BackendCpu', ''] ]
   HasBackendMemory: !Not [ !Equals [!Ref 'BackendMemory', ''] ]
+  IsHostMode: !Equals [ !Ref 'TaskNetworkMode', "host" ]
+  IsBridgeMode: !Equals [ !Ref 'TaskNetworkMode', "bridge" ]
   IsAwsVpcMode: !Equals [ !Ref 'TaskNetworkMode', "awsvpc" ]
   IsFargateLaunchType: !Equals [!Ref 'LaunchType', "FARGATE" ]
   IsEC2LaunchType: !Equals [!Ref 'LaunchType', "EC2" ]

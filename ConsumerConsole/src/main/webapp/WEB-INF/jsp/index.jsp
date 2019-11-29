@@ -34,44 +34,45 @@
 
     <%
         ApplicationContext ac = RequestContextUtils.findWebApplicationContext(request);
-        ConsumerBackendClient client = (ConsumerBackendClient) ac.getBean("backendClient");
-
         //This signifies a request.
         ConsumeResponse result = null;
-        if(request.getParameter(HostViewTag.Input.Candidate.name()) != null) {
-            ConsumeRequest.Builder msg = ConsumeRequest.newBuilder();
+        List<InstanceSummary> instances = null;
+        try (ConsumerBackendClient client = (ConsumerBackendClient) ac.getBean("backendClient")) {
+            if(request.getParameter(HostViewTag.Input.Candidate.name()) != null) {
+                ConsumeRequest.Builder msg = ConsumeRequest.newBuilder();
 
-            Candidate candidate = Candidate.valueOf(request.getParameter(HostViewTag.Input.Candidate.name()));
+                Candidate candidate = Candidate.valueOf(request.getParameter(HostViewTag.Input.Candidate.name()));
 
-            msg.setCandidate(candidate);
-            if(Candidate.SPECIFIC.equals(candidate)) {
-                String hostAddress = request.getParameter(HostViewTag.Input.HostAddress.name());
-                String hostPort = request.getParameter(HostViewTag.Input.HostPort.name());
-                msg.setHost(hostAddress);
-                msg.setPort(Integer.parseInt(hostPort));
-            }
-
-            for (Resource resource : Resource.values()) {
-                HostViewTag.Input saveEnum = HostViewTag.Input.find(resource, "Save");
-                HostViewTag.Input valueEnum = HostViewTag.Input.find(resource, "Value");
-                HostViewTag.Input unitEnum = HostViewTag.Input.find(resource, "Unit");
-
-                if(request.getParameter(saveEnum.name()) != null) {
-                    Unit unit = Unit.valueOf(request.getParameter(unitEnum.name()));
-                    double value = Double.parseDouble(request.getParameter(valueEnum.name()));
-                    msg.addUsage(UsageSpec.newBuilder()
-                                          .setResource(resource)
-                                          .setUnit(unit)
-                                          .setTarget(value)
-                                          .build());
+                msg.setCandidate(candidate);
+                if(Candidate.SPECIFIC.equals(candidate)) {
+                    String hostAddress = request.getParameter(HostViewTag.Input.HostAddress.name());
+                    String hostPort = request.getParameter(HostViewTag.Input.HostPort.name());
+                    msg.setHost(hostAddress);
+                    msg.setPort(Integer.parseInt(hostPort));
                 }
+
+                for (Resource resource : Resource.values()) {
+                    HostViewTag.Input saveEnum = HostViewTag.Input.find(resource, "Save");
+                    HostViewTag.Input valueEnum = HostViewTag.Input.find(resource, "Value");
+                    HostViewTag.Input unitEnum = HostViewTag.Input.find(resource, "Unit");
+
+                    if(request.getParameter(saveEnum.name()) != null) {
+                        Unit unit = Unit.valueOf(request.getParameter(unitEnum.name()));
+                        double value = Double.parseDouble(request.getParameter(valueEnum.name()));
+                        msg.addUsage(UsageSpec.newBuilder()
+                                              .setResource(resource)
+                                              .setUnit(unit)
+                                              .setTarget(value)
+                                              .build());
+                    }
+                }
+
+                result = client.call(msg.build());
             }
 
-            result = client.call(msg.build());
+            instances = InstanceUtils.describe(client);
+            instances = InstanceUtils.sort(instances);
         }
-
-        List<InstanceSummary> instances = InstanceUtils.describe(client);
-        instances = InstanceUtils.sort(instances);
 
         // Choose a random instance
         InstanceSummary randomInstance = InstanceUtils.getRandomInstance(instances);

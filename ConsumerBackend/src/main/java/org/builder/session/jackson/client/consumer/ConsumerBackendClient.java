@@ -14,7 +14,7 @@ import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
-public class ConsumerBackendClient implements Client<ConsumeRequest, ConsumeResponse> {
+public class ConsumerBackendClient implements Client<ConsumeRequest, ConsumeResponse>, AutoCloseable {
 
     @NonNull
     private final ManagedChannel channel;
@@ -42,5 +42,10 @@ public class ConsumerBackendClient implements Client<ConsumeRequest, ConsumeResp
             log.error("Call {} Failed={}", uuid.toString(), t);
             throw t;
         }
+    }
+
+    @Override
+    public void close() {
+        channel.shutdown();
     }
 }
