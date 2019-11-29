@@ -2,7 +2,6 @@ package org.builder.session.jackson.system;
 
 import java.time.Duration;
 import java.util.Optional;
-import java.util.concurrent.TimeUnit;
 
 import org.builder.session.jackson.client.SimpleClient;
 import org.builder.session.jackson.client.ecs.TaskMetadataClient;
@@ -180,7 +179,7 @@ public class ContainerSystemUtil implements SystemUtil {
     @Override
     public long getStorageUsage (DigitalUnit unit) {
         Preconditions.checkArgument(unit.isRate(), "Expected a rate based metric.");
-        return unit.from(networkRateTracker.getLatestRate(TimeUnit.SECONDS)
+        return unit.from(networkRateTracker.getLatestRate(unit.getTimeUnit())
                                            .map(d -> (long)Math.round(d))
                                            .orElse(0L),
                          DigitalUnit.BYTES_PER_SECOND);
@@ -189,7 +188,7 @@ public class ContainerSystemUtil implements SystemUtil {
     @Override
     public long getNetworkUsage (DigitalUnit unit) {
         Preconditions.checkArgument(unit.isRate(), "Expected a rate based metric.");
-        return unit.from(storageRateTracker.getLatestRate(TimeUnit.SECONDS)
+        return unit.from(storageRateTracker.getLatestRate(unit.getTimeUnit())
                                            .map(d -> (long)Math.round(d))
                                            .orElse(0L),
                          DigitalUnit.BYTES_PER_SECOND);

@@ -31,7 +31,7 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 public class DiskConsumer extends AbstractPidConsumer {
 
-    private static final DigitalUnit BASE_UNIT = DigitalUnit.BYTES;
+    private static final DigitalUnit BASE_UNIT = DigitalUnit.BYTES_PER_SECOND;
     private static final long DEFAULT_INITIAL_TARGET = 512000;
     private static final Duration WRITE_PACE = Duration.ofMillis(50);
     private static final Duration SWAP_PACE = Duration.ofSeconds(5);
@@ -54,7 +54,7 @@ public class DiskConsumer extends AbstractPidConsumer {
     public DiskConsumer (final long targetRateInBytes, @NonNull final SystemUtil system, @NonNull final PIDConfig pidConfig) {
         super(pidConfig);
         this.system = system;
-        this.setTarget(targetRateInBytes, Unit.BYTES);
+        this.setTarget(targetRateInBytes, getDefaultUnit());
         this.executor = Executors.newScheduledThreadPool(4);
 
         //Prepare file buffers for data transfer.
@@ -114,12 +114,14 @@ public class DiskConsumer extends AbstractPidConsumer {
         Preconditions.checkArgument(BASE_UNIT.canConvertTo(DigitalUnit.from(unit)), "Must specify a storage unit, but got " + unit);
         Preconditions.checkArgument(value >= 0, "Must specify a non-negative value, but got " + unit);
         log.info("Setting Disk consumption from " + this.targetRate + " to " + value + " at " + unit.name());
-        this.targetRate = (long) DigitalUnit.BYTES.from(value, DigitalUnit.from(unit));
+        this.targetRate = (long) DigitalUnit.from(getDefaultUnit())
+                                            .from(value, DigitalUnit.from(unit));
     }
 
     @Override
     public double getTarget (Unit unit) {
-        return DigitalUnit.from(unit).from(targetRate, DigitalUnit.BYTES);
+        return DigitalUnit.from(unit).from(targetRate,
+                                           DigitalUnit.from(getDefaultUnit()));
     }
 
     @Override
@@ -129,17 +131,17 @@ public class DiskConsumer extends AbstractPidConsumer {
 
     @Override
     public Unit getDefaultUnit () {
-        return Unit.BYTES;
+        return Unit.BYTES_PER_SECOND;
     }
 
     @Override
     protected long getGoal () {
-        return (long) getTarget(Unit.BYTES);
+        return (long) getTarget(getDefaultUnit());
     }
 
     @Override
     protected long getConsumed () {
-        return (long) getActual(Unit.BYTES);
+        return (long) getActual(getDefaultUnit());
     }
 
     @Override

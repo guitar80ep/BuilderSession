@@ -25,7 +25,7 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 public class NetworkConsumer extends AbstractPidConsumer {
 
-    private static final DigitalUnit BASE_UNIT = DigitalUnit.BYTES;
+    private static final DigitalUnit BASE_UNIT = DigitalUnit.BYTES_PER_SECOND;
     private static final long DEFAULT_INITIAL_TARGET = 512000;
     private static final Duration TRANSMIT_PACE = Duration.ofMillis(50);
     private static final int PORT = 9876;
@@ -54,7 +54,7 @@ public class NetworkConsumer extends AbstractPidConsumer {
     public NetworkConsumer (final long targetRateInBytes, @NonNull final SystemUtil system, @NonNull final PIDConfig pidConfig) {
         super(pidConfig);
         this.system = system;
-        this.setTarget(targetRateInBytes, Unit.BYTES);
+        this.setTarget(targetRateInBytes, getDefaultUnit());
 
         //Setup Web Socket connection with loopback.
         try {
@@ -101,12 +101,13 @@ public class NetworkConsumer extends AbstractPidConsumer {
         Preconditions.checkArgument(value >= 0,
                                     "Must specify a non-negative value, but got " + unit);
         log.info("Setting Network consumption from " + this.targetRate + " to " + value + " at " + unit.name());
-        this.targetRate = (long) DigitalUnit.BYTES.from(value, DigitalUnit.from(unit));
+        this.targetRate = (long) DigitalUnit.from(getDefaultUnit())
+                                            .from(value, DigitalUnit.from(unit));
     }
 
     @Override
     public double getTarget (Unit unit) {
-        return DigitalUnit.from(unit).from(targetRate, DigitalUnit.BYTES);
+        return DigitalUnit.from(unit).from(targetRate, DigitalUnit.from(getDefaultUnit()));
     }
 
     @Override
@@ -116,17 +117,17 @@ public class NetworkConsumer extends AbstractPidConsumer {
 
     @Override
     public Unit getDefaultUnit () {
-        return Unit.BYTES;
+        return Unit.BYTES_PER_SECOND;
     }
 
     @Override
     protected long getGoal () {
-        return (long) getTarget(Unit.BYTES);
+        return (long) getTarget(getDefaultUnit());
     }
 
     @Override
     protected long getConsumed () {
-        return (long) getActual(Unit.BYTES);
+        return (long) getActual(getDefaultUnit());
     }
 
     @Override
