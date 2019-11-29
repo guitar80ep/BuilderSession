@@ -137,7 +137,7 @@ public class DiskConsumer extends AbstractPidConsumer {
         if(rawIndex < 0 || rawIndex >= size) {
             return offset > 0 ? rawIndex - size : rawIndex + size;
         } else {
-            return rawIndex + offset;
+            return rawIndex;
         }
     }
 
