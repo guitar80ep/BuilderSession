@@ -62,8 +62,8 @@ Parameters:
     Type: String
     Default: "[CPU,Memory,Disk,Network]"
     Description: Required. The Consumer config specified as a list of resource types
-    to consume. Note that Network consumption only works in BRIDGE mode, due to the
-    way the ECS Agent handles network stats.
+      to consume. Note that Network consumption only works in BRIDGE mode, due to the
+      way the ECS Agent handles network stats.
   Path:
     Type: String
     Default: "*"
