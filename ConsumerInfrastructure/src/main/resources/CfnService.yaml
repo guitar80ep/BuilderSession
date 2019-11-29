@@ -58,6 +58,12 @@ Parameters:
     Description: Required. The PID config specified as [PaceInMillis,P,I,D,Decay]
       (ex. [5,1.0,2.0,3.0,0.95]) used to stabilize resource consumption. If you
       don't know much about PID, leave these as-is.
+  BackendConsumerConfig:
+    Type: String
+    Default: "[CPU,Memory,Disk,Network]"
+    Description: Required. The Consumer config specified as a list of resource types
+    to consume. Note that Network consumption only works in BRIDGE mode, due to the
+    way the ECS Agent handles network stats.
   Path:
     Type: String
     Default: "*"
@@ -222,6 +228,8 @@ Resources:
             - !FindInMap ['ConsumerConfig', 'Backend', 'ProfileTimeInSeconds']
             - "--port"
             - !Ref 'BackendPort'
+            - "--consumers"
+            - !Ref 'BackendConsumerConfig'
             - "--serviceDiscoveryId"
             - !GetAtt 'DiscoveryService.Id'
             - "--pid"

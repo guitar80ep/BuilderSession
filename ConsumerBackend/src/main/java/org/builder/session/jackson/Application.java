@@ -4,16 +4,22 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.time.Duration;
+import java.util.Arrays;
+import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.function.Function;
+import java.util.stream.Collectors;
 
 import org.apache.logging.log4j.Level;
+import org.build.session.jackson.proto.Resource;
 import org.builder.session.jackson.server.Server;
 import org.builder.session.jackson.server.ServerImpl;
 import org.builder.session.jackson.system.Profiler;
 import org.builder.session.jackson.system.SystemUtil;
 import org.builder.session.jackson.system.TaskSystemUtil;
 import org.builder.session.jackson.utils.LoggingInitializer;
+import org.builder.session.jackson.workflow.utilize.Consumer;
 import org.builder.session.jackson.workflow.utilize.PIDConfig;
 
 import com.google.common.base.Preconditions;
@@ -37,15 +43,18 @@ public class Application
         final PIDConfig pidConfig = parsePidConfig(args);
         final String dnsName = parseServiceDiscoveryId(args);
         final SystemUtil systemUtil = parseProfiling(args);
+        final Set<Resource> resources = parseConsumerConfig(args);
+        final Map<Resource, Consumer> consumers = Consumer.buildDefaultConsumers(resources,
+                                                                                 systemUtil,
+                                                                                 pidConfig);
 
-
-
-        log.info("Starting a server on port {}, with PID {}, and DNS \"{}\".",
+        log.info("Starting a server on port {}, with consumers {}, with PID {}, and DNS \"{}\".",
                  new Object[]{ port,
+                               resources,
                                pidConfig,
                                dnsName });
 
-        try (Server server = new ServerImpl(port, systemUtil, pidConfig, dnsName);
+        try (Server server = new ServerImpl(port, consumers, dnsName);
              BufferedReader reader = new BufferedReader(new InputStreamReader(System.in))) {
             server.start();
             while(!shouldStop(reader)) {
@@ -115,6 +124,20 @@ public class Application
                             .integralFactor(i)
                             .integralDecay(decay)
                             .build();
+        }).get();
+    }
+
+    protected static Set<Resource> parseConsumerConfig(final @NonNull String[] args) {
+        return parseArg(args, true, "--consumers", s -> {
+            s = s.trim();
+            Preconditions.checkArgument(s.startsWith("["), "List should start with \"[\"");
+            Preconditions.checkArgument(s.endsWith("]"), "List should ends with \"[\"");
+            s = s.substring(1, s.length() - 1);
+            String[] listArgs = s.split(",");
+            return Arrays.asList(listArgs)
+                         .stream()
+                         .map(r -> Resource.valueOf(r.toUpperCase()))
+                         .collect(Collectors.toSet());
         }).get();
     }
 

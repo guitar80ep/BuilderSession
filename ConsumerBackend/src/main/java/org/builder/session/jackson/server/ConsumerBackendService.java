@@ -23,17 +23,10 @@ import org.builder.session.jackson.client.consumer.ConsumerBackendClient;
 import org.builder.session.jackson.client.loadbalancing.ServiceRegistry;
 import org.builder.session.jackson.client.loadbalancing.ServiceRegistryImpl;
 import org.builder.session.jackson.client.wrapper.CachedClient;
-import org.builder.session.jackson.system.SystemUtil;
 import org.builder.session.jackson.workflow.Workflow;
 import org.builder.session.jackson.workflow.utilize.Consumer;
-import org.builder.session.jackson.workflow.utilize.CpuConsumer;
-import org.builder.session.jackson.workflow.utilize.DiskConsumer;
-import org.builder.session.jackson.workflow.utilize.MemoryConsumer;
-import org.builder.session.jackson.workflow.utilize.NetworkConsumer;
-import org.builder.session.jackson.workflow.utilize.PIDConfig;
 
 import com.google.common.base.Preconditions;
-import com.google.common.collect.ImmutableMap;
 
 import io.grpc.stub.StreamObserver;
 import lombok.NonNull;
@@ -47,27 +40,21 @@ public final class ConsumerBackendService extends ConsumerBackendServiceGrpc.Con
     @NonNull
     private final Workflow workflow = new Workflow();
     @NonNull
-    private final Map<Resource, Consumer> consumers;
-    @NonNull
     private final SimpleClient<List<ServiceRegistry.Instance>> registry;
+    @NonNull
+    private final Map<Resource, Consumer> consumers;
     @NonNull
     private final ServiceRegistry.Instance host;
 
     public ConsumerBackendService(@NonNull final String host,
                                   final int port,
-                                  @NonNull final SystemUtil systemUtil,
-                                  @NonNull final PIDConfig pidConfig,
+                                  @NonNull final Map<Resource, Consumer> consumers,
                                   @NonNull String serviceDiscoveryId) {
         this.host = new ServiceRegistry.Instance(host, port);
-        this.registry = CachedClient.wrap(new ServiceRegistryImpl(serviceDiscoveryId), INSTANCE_DISCOVERY_PACE, true);
-
-        // Setup consumers...
-        consumers = ImmutableMap.<Resource, Consumer>builder()
-                .put(Resource.CPU, new CpuConsumer(systemUtil, pidConfig))
-                .put(Resource.MEMORY, new MemoryConsumer(systemUtil, pidConfig))
-                .put(Resource.NETWORK, new NetworkConsumer(systemUtil, pidConfig))
-                .put(Resource.DISK, new DiskConsumer(systemUtil, pidConfig))
-                .build();
+        this.registry = CachedClient.wrap(new ServiceRegistryImpl(serviceDiscoveryId),
+                                          INSTANCE_DISCOVERY_PACE,
+                                          true);
+        this.consumers = consumers;
         consumers.forEach((r, c) -> workflow.consume(c));
     }
 

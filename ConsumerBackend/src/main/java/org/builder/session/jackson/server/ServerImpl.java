@@ -1,10 +1,11 @@
 package org.builder.session.jackson.server;
 
 import java.io.IOException;
+import java.util.Map;
 
-import org.builder.session.jackson.system.SystemUtil;
+import org.build.session.jackson.proto.Resource;
 import org.builder.session.jackson.utils.HostnameUtils;
-import org.builder.session.jackson.workflow.utilize.PIDConfig;
+import org.builder.session.jackson.workflow.utilize.Consumer;
 
 import com.google.common.base.Preconditions;
 
@@ -25,8 +26,7 @@ public class ServerImpl implements Server {
     private final io.grpc.Server server;
 
     public ServerImpl (@NonNull final int port,
-                       @NonNull final SystemUtil systemUtil,
-                       @NonNull final PIDConfig pidConfig,
+                       @NonNull final Map<Resource, Consumer> consumers,
                        @NonNull final String serviceDiscoveryId) {
         Preconditions.checkArgument(port >= 0 && port < (Short.MAX_VALUE * 2),
                                     "Port must be within the range [0, 65535], but was " + port);
@@ -34,8 +34,7 @@ public class ServerImpl implements Server {
         this.port = port;
         ConsumerBackendService consumerService = new ConsumerBackendService(this.host,
                                                                             this.port,
-                                                                            systemUtil,
-                                                                            pidConfig,
+                                                                            consumers,
                                                                             serviceDiscoveryId);
         server = ServerBuilder.forPort(port)
                               .addService(consumerService).build();
