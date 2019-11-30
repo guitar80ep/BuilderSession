@@ -81,7 +81,6 @@ public final class ConsumerBackendService extends ConsumerBackendServiceGrpc.Con
                     ServiceRegistry.Instance selectedInstance = new ServiceRegistry.Instance(request.getHost(),
                                                                                              request.getPort());
                     List<ServiceRegistry.Instance> hostsForValidation = registry.call();
-                    Preconditions.checkArgument(hostsForValidation.stream().anyMatch(i -> i.equals(selectedInstance)));
                     responseObserver.onNext(consume(selectedInstance, request, requestId));
                     break;
                 case ALL:

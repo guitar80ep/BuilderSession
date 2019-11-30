@@ -8,6 +8,7 @@ import org.builder.session.jackson.client.SimpleClient;
 import org.builder.session.jackson.utils.NoArgs;
 
 import lombok.Data;
+import lombok.EqualsAndHashCode;
 import lombok.NonNull;
 import lombok.ToString;
 
@@ -27,10 +28,10 @@ public interface ServiceRegistry extends SimpleClient<List<ServiceRegistry.Insta
 
     @Data
     @ToString
+    @EqualsAndHashCode
     public static class Instance {
         @NonNull
         private final String address;
-        @NonNull
         private final int port;
     }
 }
