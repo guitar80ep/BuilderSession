@@ -14,6 +14,7 @@ import org.builder.session.jackson.exception.ConsumerInternalException;
 import org.builder.session.jackson.utils.RateTracker;
 
 import com.google.common.base.Preconditions;
+import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 
 import lombok.extern.slf4j.Slf4j;
@@ -57,22 +58,30 @@ public class TaskSystemUtil implements SystemUtil {
                                                            .values()
                                                            .stream()
                                                            // Network metrics sometimes begin as NULL.
-                                                           .flatMap(c -> Optional.ofNullable(c.getNetworkStats())
+                                                           .flatMap(c -> Optional.ofNullable(c)
+                                                                                 .map(o -> o.getNetworkStats())
                                                                                  .orElseGet(() -> Maps.newHashMap())
                                                                                  .values()
                                                                                  .stream())
                                                            // We just track written bytes since roughly Read == Write at the moment.
-                                                           .mapToDouble(i -> i.getTransmittedBytes())
+                                                           .mapToDouble(i -> Optional.ofNullable(i)
+                                                                                     .map(o -> o.getTransmittedBytes())
+                                                                                     .orElse(0L))
                                                            .sum(),
                                                  RATE_POLLING_PERIOD);
             storageRateTracker = new RateTracker(() -> this.pollStats()
                                                            .getContainers()
                                                            .values()
                                                            .stream()
-                                                           .flatMap(c -> c.getStorageStats().getVolumes().stream())
+                                                           .flatMap(c -> Optional.ofNullable(c)
+                                                                                 .map(o -> o.getStorageStats())
+                                                                                 .map(o -> o.getVolumes())
+                                                                                 .orElseGet(() -> Lists.newArrayList())
+                                                                                 .stream())
                                                            // We just track written bytes since roughly Read == Write at the moment.
                                                            .filter(v -> OPERATION_FOR_STORAGE.equals(v.getOperation()))
-                                                           .mapToDouble(v -> v.getValue())
+                                                           .mapToDouble(v -> Optional.ofNullable(v.getValue())
+                                                                                     .orElse(0L))
                                                            .sum(),
                                                  RATE_POLLING_PERIOD);
         } catch (Throwable t) {
@@ -128,13 +137,21 @@ public class TaskSystemUtil implements SystemUtil {
     }
 
     public long getUsedMemory(DigitalUnit unit) {
-        return unit.from(this.pollStats()
-                                       .getContainers()
-                                       .values()
-                                       .stream()
-                                       .mapToLong(c -> c.getMemoryStats().getUsage())
-                                       .sum(),
-                                   DigitalUnit.BYTES);
+        TaskStats taskStats = this.pollStats();
+        return unit.from(taskStats.getContainers()
+                                  .values()
+                                  .stream()
+                                  .mapToLong(c -> Optional.ofNullable(c)
+                                                          .map(o -> o.getMemoryStats())
+                                                          .map(o -> o.getUsage())
+                                                          .orElseGet(() -> {
+                                                              //Default to 0, but log the issue
+                                                              log.warn("Defaulting memory to 0 due to poll stats: {}",
+                                                                       taskStats);
+                                                              return 0L;
+                                                          }))
+                                  .sum(),
+                         DigitalUnit.BYTES);
     }
 
     public double getMemoryPercentage() {
@@ -153,7 +170,7 @@ public class TaskSystemUtil implements SystemUtil {
             // just how many cycles out of the total amount the CPU run were taken by this container.
             return systemUsage == 0 ? 0.0 : (double)containerUsage / (double)systemUsage;
         } else {
-            log.warn("Previous CPU stats were still null on TaskMetadata endpoint. Resolving to 0.");
+            log.warn("Previous CPU stats were still null on TaskMetadata endpoint. Defaulting to 0.");
             return 0.0;
         }
     }
