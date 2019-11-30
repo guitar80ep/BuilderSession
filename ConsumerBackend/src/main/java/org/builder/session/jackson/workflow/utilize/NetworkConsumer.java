@@ -25,8 +25,7 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 public class NetworkConsumer extends AbstractPidConsumer {
 
-    private static final DigitalUnit BASE_UNIT = DigitalUnit.BYTES_PER_SECOND;
-    private static final long DEFAULT_INITIAL_TARGET = 512000;
+    private static final long DEFAULT_INITIAL_TARGET = 500; // KB/Second
     private static final Duration TRANSMIT_PACE = Duration.ofMillis(50);
 
     @Getter
@@ -47,7 +46,11 @@ public class NetworkConsumer extends AbstractPidConsumer {
     private long targetRate;
 
     public NetworkConsumer (@NonNull final SystemUtil system, @NonNull final PIDConfig pidConfig) {
-        this(DEFAULT_INITIAL_TARGET, system, pidConfig);
+        this(DigitalUnit.BYTES_PER_SECOND
+                     .from(DEFAULT_INITIAL_TARGET,
+                           DigitalUnit.KILOBYTES_PER_SECOND),
+             system,
+             pidConfig);
     }
 
     public NetworkConsumer (final long targetRateInBytes, @NonNull final SystemUtil system, @NonNull final PIDConfig pidConfig) {
@@ -73,6 +76,7 @@ public class NetworkConsumer extends AbstractPidConsumer {
         this.executor.scheduleAtFixedRate(() -> {
             try {
                 int dataSize = scaleAdjustment.get();
+                log.trace("Writing {} bytes to socket.", dataSize);
                 byte[] data = new byte[dataSize > 0 ? dataSize : 0];
                 ThreadLocalRandom.current().nextBytes(data);
                 writerSocket.getOutputStream().write(data);
@@ -86,6 +90,7 @@ public class NetworkConsumer extends AbstractPidConsumer {
             try {
                 while (this.readerSocket.getInputStream().available() > 0) {
                     int remaining = this.readerSocket.getInputStream().available();
+                    log.trace("Reading {} bytes from socket.", remaining);
                     this.readerSocket.getInputStream().read(new byte[remaining]);
                 }
             } catch (Throwable t) {
@@ -96,13 +101,13 @@ public class NetworkConsumer extends AbstractPidConsumer {
 
     @Override
     public void setTarget (double value, @NonNull Unit unit) {
-        Preconditions.checkArgument(BASE_UNIT.canConvertTo(DigitalUnit.from(unit)),
+        DigitalUnit internalUnit = DigitalUnit.from(getDefaultUnit());
+        Preconditions.checkArgument(DigitalUnit.from(unit).canConvertTo(internalUnit),
                                     "Must specify a network unit, but got " + unit);
         Preconditions.checkArgument(value >= 0,
                                     "Must specify a non-negative value, but got " + unit);
         log.info("Setting Network consumption from " + this.targetRate + " to " + value + " at " + unit.name());
-        this.targetRate = (long) DigitalUnit.from(getDefaultUnit())
-                                            .from(value, DigitalUnit.from(unit));
+        this.targetRate = (long) internalUnit.from(value, DigitalUnit.from(unit));
     }
 
     @Override

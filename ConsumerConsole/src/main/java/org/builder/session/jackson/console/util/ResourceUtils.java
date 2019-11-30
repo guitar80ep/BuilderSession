@@ -23,10 +23,10 @@ public class ResourceUtils {
                     .addAll(DigitalUnit.findMatchingUnits(Unit.BYTES))
                     .build())
             .put(Resource.DISK, ImmutableSet.<Unit>builder()
-                    .addAll(DigitalUnit.findMatchingUnits(Unit.BYTES))
+                    .addAll(DigitalUnit.findMatchingUnits(Unit.BYTES_PER_SECOND))
                     .build())
             .put(Resource.NETWORK, ImmutableSet.<Unit>builder()
-                    .addAll(DigitalUnit.findMatchingUnits(Unit.BYTES))
+                    .addAll(DigitalUnit.findMatchingUnits(Unit.BYTES_PER_SECOND))
                     .build())
             .build();
 
