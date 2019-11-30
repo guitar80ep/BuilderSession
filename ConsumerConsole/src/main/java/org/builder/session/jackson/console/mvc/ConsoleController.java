@@ -12,7 +12,7 @@ import lombok.extern.slf4j.Slf4j;
 public class ConsoleController {
 
     @RequestMapping(value = "/",
-                    method = RequestMethod.GET)
+                    method = { RequestMethod.GET, RequestMethod.POST})
     public String index(Model model) {
         log.trace("Starting Index page! Model: " + model);
         return "index";
