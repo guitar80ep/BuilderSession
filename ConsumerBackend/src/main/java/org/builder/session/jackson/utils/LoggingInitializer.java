@@ -31,7 +31,7 @@ public class LoggingInitializer {
                 Thread.sleep(1000);
                 System.out.println("Awaiting logger start: " + ctx);
             } catch (Throwable t) {
-                // Do nothing...
+                System.err.println("Failed to start logger: " + ctx);
             }
         }
     }

@@ -62,7 +62,8 @@ public class Application
                 // Do nothing while the loop awaits completion...
             }
         } catch (Throwable t) {
-            log.error("Found unexpected error while running server.", t);
+            log.error("Found unexpected error while running server. Shutting down.", t);
+            System.exit(1);
         }
 
         log.info( "Server shutdown is complete." );
