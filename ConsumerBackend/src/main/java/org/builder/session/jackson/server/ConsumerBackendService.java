@@ -83,6 +83,7 @@ public final class ConsumerBackendService extends ConsumerBackendServiceGrpc.Con
                     List<ServiceRegistry.Instance> hostsForValidation = registry.call();
                     Preconditions.checkArgument(hostsForValidation.stream().anyMatch(i -> i.equals(selectedInstance)));
                     responseObserver.onNext(consume(selectedInstance, request, requestId));
+                    break;
                 case ALL:
                     List<ServiceRegistry.Instance> hosts = registry.call();
                     List<ConsumeResponse> responses = hosts.parallelStream()
@@ -109,8 +110,10 @@ public final class ConsumerBackendService extends ConsumerBackendServiceGrpc.Con
                                                                    + " was specified.");
             }
         } catch (IllegalArgumentException e) {
+            log.error("Failed to execute consume request.", e);
             responseObserver.onNext(onSingleFailure(ErrorCode.INVALID_PARAMETER, e.getClass().getSimpleName() + ": " + e.getMessage()));
         } catch (Throwable t) {
+            log.error("Failed to execute consume request.", t);
             responseObserver.onNext(onSingleFailure(ErrorCode.UNKNOWN, t.getClass().getSimpleName() + ": " + t.getMessage()));
         }
 

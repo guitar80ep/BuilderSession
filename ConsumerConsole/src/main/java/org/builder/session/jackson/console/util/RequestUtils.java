@@ -32,15 +32,17 @@ public final class RequestUtils {
 
     public static Optional<ConsumeResponse> request(HttpServletRequest request, ConsumerBackendClient client) {
 
-        if(request.getParameter(HostViewTag.Input.Candidate.name()) != null) {
+        String candidateRawValue = request.getParameter(HostViewTag.Input.Candidate.name());
+        if(candidateRawValue != null) {
             ConsumeRequest.Builder msg = ConsumeRequest.newBuilder();
 
-            Candidate candidate = Candidate.valueOf(request.getParameter(HostViewTag.Input.Candidate.name()));
+            Candidate candidate = Candidate.valueOf(candidateRawValue);
             msg.setCandidate(candidate);
 
             if(Candidate.SPECIFIC.equals(candidate)) {
                 String hostAddress = request.getParameter(HostViewTag.Input.HostAddress.name());
                 String hostPort = request.getParameter(HostViewTag.Input.HostPort.name());
+                log.info("Sending consume request to specific host {}:{}.", hostAddress, hostPort);
                 msg.setHost(hostAddress);
                 msg.setPort(Integer.parseInt(hostPort));
             }
