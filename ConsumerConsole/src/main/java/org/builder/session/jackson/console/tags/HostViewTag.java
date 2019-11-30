@@ -13,8 +13,10 @@ import static org.builder.session.jackson.console.html.impl.Elements.newTableRow
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.Comparator;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 import javax.servlet.jsp.JspException;
@@ -94,6 +96,7 @@ public class HostViewTag extends SimpleTagSupport {
 
         List<UsageSpec> usages = Lists.newArrayList(instance.getUsageList());
         usages.sort(Comparator.comparing(u -> u.getResource().name()));
+        Set<Resource> resources = new HashSet<>();
         for(UsageSpec usage : usages) {
             table.subElement(createResourceTableRow(usage.getResource(),
                                                     new Value(usage.getTarget(),
@@ -101,21 +104,21 @@ public class HostViewTag extends SimpleTagSupport {
                                                     new Value(usage.getActual(),
                                                               usage.getUnit()))
                                      .build());
+            resources.add(usage.getResource());
         }
+        Set<HtmlElement> checkboxes = resources.stream()
+                                               .map(r -> Input.find(r, "Save"))
+                                               .map(i -> newCheckbox(Input.SaveCpu.name(),
+                                                                     true)
+                                                       .build())
+                                               .collect(Collectors.toSet());
 
         table.subElement(newTableRow().subElement(
                 newTableCell(3)
                         .subElement(newInput(InputType.Submit,
                                              "Button",
                                              "Save").build())
-                        .subElement(newCheckbox(Input.SaveCpu.name(),
-                                                 true).build())
-                        .subElement(newCheckbox(Input.SaveMemory.name(),
-                                                true).build())
-                        .subElement(newCheckbox(Input.SaveDisk.name(),
-                                                true).build())
-                        .subElement(newCheckbox(Input.SaveNetwork.name(),
-                                                true).build())
+                        .subElements(checkboxes)
                         .build()).build());
 
         return table;

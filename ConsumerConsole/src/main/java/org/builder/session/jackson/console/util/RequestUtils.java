@@ -24,6 +24,7 @@ import com.google.common.collect.Lists;
 import lombok.AccessLevel;
 import lombok.NoArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import software.amazon.awssdk.utils.StringUtils;
 
 @Slf4j
 @NoArgsConstructor(access = AccessLevel.NONE)
@@ -49,9 +50,14 @@ public final class RequestUtils {
                 HostViewTag.Input valueEnum = HostViewTag.Input.find(resource, "Value");
                 HostViewTag.Input unitEnum = HostViewTag.Input.find(resource, "Unit");
 
-                if(request.getParameter(saveEnum.name()) != null) {
-                    Unit unit = Unit.valueOf(request.getParameter(unitEnum.name()));
-                    double value = Double.parseDouble(request.getParameter(valueEnum.name()));
+                String rawValue = request.getParameter(valueEnum.name());
+                String rawUnit = request.getParameter(unitEnum.name());
+
+                if(request.getParameter(saveEnum.name()) != null
+                        && !StringUtils.isBlank(rawValue)
+                        && !StringUtils.isBlank(rawUnit) ) {
+                    Unit unit = Unit.valueOf(rawUnit);
+                    double value = Double.parseDouble(rawValue);
                     msg.addUsage(UsageSpec.newBuilder()
                                           .setResource(resource)
                                           .setUnit(unit)
