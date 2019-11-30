@@ -1,7 +1,6 @@
 package org.builder.session.jackson.console.util;
 
 import java.net.InetAddress;
-import java.util.Arrays;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
@@ -46,7 +45,7 @@ public final class RequestUtils {
                 msg.setPort(Integer.parseInt(hostPort));
             }
 
-            List<Resource> resources = Arrays.asList(Resource.values());
+            List<Resource> resources = Lists.newArrayList(Resource.values());
             resources.remove(Resource.UNRECOGNIZED);
             for (Resource resource : resources) {
                 HostViewTag.Input saveEnum = HostViewTag.Input.find(resource, "Save");
