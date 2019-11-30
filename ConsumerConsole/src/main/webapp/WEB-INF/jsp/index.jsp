@@ -93,9 +93,6 @@
         </div>
 
         <script>
-            // By default, we open the "Specific" tab.
-            document.getElementById("Specific").click();
-
             //A function for changing tabs within the page.
             function changeTab(event, candidate) {
                 var i, tabcontent, tabbuttons;
@@ -116,4 +113,8 @@
             }
         </script>
     </body>
+    <script defer>
+        // By default, we open the "Specific" tab.
+        document.getElementById("Specific").click();
+    </script>
 </html>
