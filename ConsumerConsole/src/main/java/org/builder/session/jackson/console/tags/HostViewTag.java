@@ -67,21 +67,21 @@ public class HostViewTag extends SimpleTagSupport {
                                                                       @NonNull Candidate candidate) {
         HtmlElement.HtmlElementBuilder table = newTable();
 
-        String hostAddress = Candidate.ALL.equals(candidate)
-                             ? "ALL"
-                             : instance.getHost() + ":" + instance.getPort();
+        String hostAddressAndPort = Candidate.ALL.equals(candidate)
+                                    ? "ALL"
+                                    : instance.getHost() + ":" + instance.getPort();
         HtmlElement candidateInput = newInput(InputType.Hidden,
                                               Input.Candidate.name(),
                                               candidate.name()).build();
         HtmlElement hostAddressInput = newInput(InputType.Hidden,
                                                 Input.HostAddress.name(),
-                                                hostAddress).build();
+                                                instance.getHost()).build();
         HtmlElement hostPortInput = newInput(InputType.Hidden,
                                              Input.HostPort.name(),
                                              Integer.toString(instance.getPort())).build();
         table.subElement(newTableRow()
                                 .subElement(newTableCell(3)
-                                                    .text("<b>Host(s): </b>" +  hostAddress)
+                                                    .text("<b>Host(s): </b>" +  hostAddressAndPort)
                                                     .subElement(candidateInput)
                                                     .subElement(hostAddressInput)
                                                     .subElement(hostPortInput)
