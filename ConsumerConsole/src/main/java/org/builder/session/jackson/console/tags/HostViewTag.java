@@ -108,7 +108,7 @@ public class HostViewTag extends SimpleTagSupport {
         }
         Set<HtmlElement> checkboxes = resources.stream()
                                                .map(r -> Input.find(r, "Save"))
-                                               .map(i -> newCheckbox(Input.SaveCpu.name(),
+                                               .map(i -> newCheckbox(i.name(),
                                                                      true)
                                                        .build())
                                                .collect(Collectors.toSet());
