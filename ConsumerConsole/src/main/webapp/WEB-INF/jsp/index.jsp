@@ -72,7 +72,7 @@
         <div id="Specific" class="tabcontent">
             <p>Change a specfic hosts' target consumption.</p>
             <c:forEach items="<%= instances %>" var="hostToView" >
-                <form action="index.jsp" method="post">
+                <form action="index" method="post">
                     <consumer:HostView instance="${hostToView}" candidate="<%= Candidate.SPECIFIC %>"/>
                 </form>
             </c:forEach>
@@ -80,14 +80,14 @@
 
         <div id="All" class="tabcontent">
             <p>Change all hosts' target consumption.</p>
-            <form action="index.jsp" method="post">
+            <form action="/index" method="post">
                 <consumer:HostView instance="<%= avgInstance %>" candidate="<%= Candidate.ALL %>"/>
             </form>
         </div>
 
         <div id="Random" class="tabcontent">
             <p>Change a random host's target consumption.</p>
-            <form action="index.jsp" method="post">
+            <form action="jsp/index" method="post">
                 <consumer:HostView instance="<%= randomInstance %>" candidate="<%= Candidate.SPECIFIC %>"/>
             </form>
         </div>
