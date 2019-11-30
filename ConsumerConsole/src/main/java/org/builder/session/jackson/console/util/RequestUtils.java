@@ -19,6 +19,8 @@ import org.builder.session.jackson.console.tags.HostViewTag;
 import org.builder.session.jackson.exception.ConsumerDependencyException;
 import org.builder.session.jackson.utils.JsonHelper;
 
+import com.google.common.collect.Lists;
+
 import lombok.AccessLevel;
 import lombok.NoArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -79,7 +81,8 @@ public final class RequestUtils {
     }
 
     public static List<InstanceSummary> sort(List<InstanceSummary> instances) {
-        instances.sort(Comparator.comparing(i -> i.getHost() + ":" + i.getPort()));
+        Lists.newArrayList(instances).sort(
+                Comparator.comparing(i -> i.getHost() + ":" + i.getPort()));
         return instances;
     }
 

@@ -203,6 +203,19 @@ Resources:
       ContainerDefinitions:
         - Name: 'ConsumerBackend'
           Essential: true
+          HealthCheck:
+            Command:
+              - "CMD-SHELL"
+              - "java"
+              - "-cp"
+              - "/usr/local/ConsumerBackend/ConsumerBackend.jar"
+              - "org.builder.session.jackson.health.Healthcheck"
+              - "--port"
+              - !Ref 'BackendPort'
+            Interval: 5
+            Retries: 4
+            StartPeriod: 10
+            Timeout: 5
           Cpu:
             Fn::If:
               - 'HasBackendCpu'
@@ -251,7 +264,7 @@ Resources:
           Essential: true
           DependsOn:
             - ContainerName: 'ConsumerBackend'
-              Condition: START
+              Condition: HEALTHY
           Cpu:
             Fn::If:
               - 'HasConsoleCpu'

@@ -18,6 +18,7 @@ import org.builder.session.jackson.server.ServerImpl;
 import org.builder.session.jackson.system.Profiler;
 import org.builder.session.jackson.system.SystemUtil;
 import org.builder.session.jackson.system.TaskSystemUtil;
+import org.builder.session.jackson.utils.CommandLineArguments;
 import org.builder.session.jackson.utils.LoggingInitializer;
 import org.builder.session.jackson.workflow.utilize.Consumer;
 import org.builder.session.jackson.workflow.utilize.PIDConfig;
@@ -74,10 +75,10 @@ public class Application
 
     protected static SystemUtil parseProfiling(final @NonNull String[] args) {
         SystemUtil systemUtil = new TaskSystemUtil();
-        Optional<Integer> secondsToProfile = parseArg(args,
-                                                      false,
-                                                      "--runProfiling",
-                                                      Integer::parseInt);
+        Optional<Integer> secondsToProfile = CommandLineArguments.parseArg(args,
+                                                                           false,
+                                                                           "--runProfiling",
+                                                                           Integer::parseInt);
         secondsToProfile.ifPresent(s -> {
             try (Profiler profiler = new Profiler(Duration.ofSeconds(s))) {
                 profiler.profile(systemUtil);
@@ -91,7 +92,7 @@ public class Application
     }
 
     protected static int parsePort(final @NonNull String[] args) {
-        return parseArg(args, true, "--port", s -> {
+        return CommandLineArguments.parseArg(args, true, "--port", s -> {
             int port = Integer.parseInt(s);
             Range<Integer> range = Range.openClosed(0, Short.MAX_VALUE * 2);
             Preconditions.checkArgument(range.contains(port), "Expected valid port within range " + range);
@@ -100,7 +101,7 @@ public class Application
     }
 
     protected static PIDConfig parsePidConfig(final @NonNull String[] args) {
-        return parseArg(args, true, "--pid", s -> {
+        return CommandLineArguments.parseArg(args, true, "--pid", s -> {
             s = s.trim();
             Preconditions.checkArgument(s.startsWith("["), "List should start with \"[\"");
             Preconditions.checkArgument(s.endsWith("]"), "List should ends with \"[\"");
@@ -128,7 +129,7 @@ public class Application
     }
 
     protected static Set<Resource> parseConsumerConfig(final @NonNull String[] args) {
-        return parseArg(args, true, "--consumers", s -> {
+        return CommandLineArguments.parseArg(args, true, "--consumers", s -> {
             s = s.trim();
             Preconditions.checkArgument(s.startsWith("["), "List should start with \"[\"");
             Preconditions.checkArgument(s.endsWith("]"), "List should ends with \"[\"");
@@ -142,30 +143,10 @@ public class Application
     }
 
     protected static String parseServiceDiscoveryId (final @NonNull String[] args) {
-        return parseArg(args,
-                        true,
-                        "--serviceDiscoveryId",
-                        Function.identity()).get();
-    }
-
-    protected static <T> Optional<T> parseArg(final @NonNull String[] args,
-                                              final boolean required,
-                                              final @NonNull String parameterName,
-                                              final @NonNull Function<String, T> func) {
-        Preconditions.checkArgument(args.length % 2 == 0, "Expected an even number of arguments, but got " + args);
-        for(int i = 0; i < args.length; i += 2) {
-            String currentParamName = args[i];
-            String currentParamValue = args[i+1];
-            if(parameterName.equals(currentParamName)) {
-                return Optional.of(func.apply(currentParamValue));
-            }
-        }
-
-        if(required) {
-            throw new IllegalArgumentException("Could not find appropriate parameter " + parameterName);
-        } else {
-            return Optional.empty();
-        }
+        return CommandLineArguments.parseArg(args,
+                                             true,
+                                             "--serviceDiscoveryId",
+                                             Function.identity()).get();
     }
 
     private static void initializeLogging () {
