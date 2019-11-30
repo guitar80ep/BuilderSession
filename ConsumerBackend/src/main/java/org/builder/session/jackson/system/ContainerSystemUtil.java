@@ -151,8 +151,16 @@ public class ContainerSystemUtil implements SystemUtil {
     }
 
     protected double getCpuPercentageAllocatedToThisContainer() {
+        ContainerStats pollStats = this.pollStats();
+        long processors = Optional.ofNullable(pollStats.getCpuStats())
+                                  .map(c -> c.getOnlineCpus())
+                                  .orElseGet(() -> { //Default to 1, but log the issue
+                                        log.warn("Defaulting online CPUs to 1 due to poll stats: {}",
+                                                 pollStats);
+                                        return 1L;
+                                  });
         return (double)this.pollMetadata().getLimits().get(CPU_LIMIT_KEY)
-                / (double)(this.pollStats().getCpuStats().getOnlineCpus() * getUnitsPerProcessor());
+                / (double)(processors * getUnitsPerProcessor());
     }
 
     @Override

@@ -159,13 +159,21 @@ public class TaskSystemUtil implements SystemUtil {
     }
 
     public double getCpuPercentageAllocatedToThisTask() {
-        long processors = this.pollStats()
+        TaskStats pollStats = this.pollStats();
+        long processors = pollStats
                               .getContainers()
                               .values()
                               .stream()
-                              .findFirst().get()
-                              .getCpuStats()
-                              .getOnlineCpus();
+                              .map(c -> Optional.ofNullable(c.getCpuStats()))
+                              .map(c -> c.map(o -> o.getOnlineCpus()))
+                              .filter(c -> c.isPresent())
+                              .map(c -> c.get())
+                              .findFirst()
+                              .orElseGet(() -> { //Default to 1, but log the issue
+                                  log.warn("Defaulting online CPUs to 1 due to poll stats: {}",
+                                           pollStats);
+                                  return 1L;
+                              });
         return (double)getTotalCpu(DigitalUnit.VCPU)
                 / (double)(processors * getUnitsPerProcessor());
     }
