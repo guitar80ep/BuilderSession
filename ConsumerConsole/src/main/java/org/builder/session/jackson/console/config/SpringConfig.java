@@ -1,6 +1,8 @@
 package org.builder.session.jackson.console.config;
 
 import org.builder.session.jackson.client.consumer.ConsumerBackendClient;
+import org.builder.session.jackson.client.loadbalancing.ServiceRegistry;
+import org.builder.session.jackson.client.loadbalancing.ServiceRegistryImpl;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.ComponentScan;
 import org.springframework.context.annotation.Configuration;
@@ -38,10 +40,24 @@ public class SpringConfig implements WebMvcConfigurer {
 
     @Bean(name = "backendClient")
     @Scope(scopeName = "prototype")
-    public ConsumerBackendClient backendClient() {
+    public ConsumerBackendClient backendClient(ServiceRegistry registry) {
         String host = System.getenv("CONSUMER_BACKEND_IP");
-        int port = Integer.parseInt(System.getenv("CONSUMER_BACKEND_PORT"));
-        log.info("Created new backend client to self: " + host + ":" + port);
-        return new ConsumerBackendClient(host, port);
+        String portAsString = System.getenv("CONSUMER_BACKEND_PORT");
+        if(host != null && portAsString != null) {
+            int port = Integer.parseInt(portAsString);
+            log.info("Created new backend client to self: " + host + ":" + port);
+            return new ConsumerBackendClient(host, port);
+        } else {
+            //Pick a random instance to make calls to.
+            ServiceRegistry.Instance instance = registry.resolveHost();
+            log.info("Created new backend client to random backend host: " + instance);
+            return new ConsumerBackendClient(instance.getAddress(), instance.getPort());
+        }
+    }
+
+    @Bean(name = "serviceRegistry")
+    public ServiceRegistry serviceRegistry() {
+        String registryId = System.getenv("CONSUMER_SERVICE_REGISTRY_ID");
+        return new ServiceRegistryImpl(registryId);
     }
 }

@@ -64,9 +64,9 @@
         <br/>
 
         <div class="tab">
-            <button class="tabbutton" onclick="changeTab(event, 'Specific')">Specific</button>
-            <button class="tabbutton" onclick="changeTab(event, 'All')">All</button>
-            <button class="tabbutton" onclick="changeTab(event, 'Random')">Random</button>
+            <button id="SpecificButton" class="tabbutton" onclick="changeTab(event, 'Specific')">Specific</button>
+            <button id="AllButton" class="tabbutton" onclick="changeTab(event, 'All')">All</button>
+            <button id="RandomButton" class="tabbutton" onclick="changeTab(event, 'Random')">Random</button>
         </div>
 
         <div id="Specific" class="tabcontent">
@@ -115,6 +115,6 @@
     </body>
     <script defer>
         // By default, we open the "Specific" tab.
-        document.getElementById("Specific").click();
+        document.getElementById("SpecificButton").click();
     </script>
 </html>
