@@ -206,12 +206,7 @@ Resources:
           HealthCheck:
             Command:
               - "CMD-SHELL"
-              - "java"
-              - "-cp"
-              - "/usr/local/ConsumerBackend/ConsumerBackend.jar"
-              - "org.builder.session.jackson.health.Healthcheck"
-              - "--port"
-              - !Ref 'BackendPort'
+              - !Join [ " ", [ "java -cp /usr/local/ConsumerBackend/ConsumerBackend.jar org.builder.session.jackson.health.Healthcheck --port", !Ref 'BackendPort'] ]
             Interval: 5
             Retries: 4
             StartPeriod: 10

@@ -58,7 +58,8 @@
         <br/>
 
         <p>
-            <%= JsonHelper.format(result.getInstances(0)).trim() %>
+            <%= result != null ? "Result: " + JsonHelper.format(result.getInstances(0)).trim()
+                               : "No Result." %>
         </p>
         <br/>
 
