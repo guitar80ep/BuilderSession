@@ -5,6 +5,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.UUID;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.stream.Collectors;
 
@@ -23,6 +24,7 @@ import org.builder.session.jackson.client.consumer.ConsumerBackendClient;
 import org.builder.session.jackson.client.loadbalancing.ServiceRegistry;
 import org.builder.session.jackson.client.loadbalancing.ServiceRegistryImpl;
 import org.builder.session.jackson.client.wrapper.CachedClient;
+import org.builder.session.jackson.utils.JsonHelper;
 import org.builder.session.jackson.workflow.Workflow;
 import org.builder.session.jackson.workflow.utilize.Consumer;
 
@@ -61,24 +63,26 @@ public final class ConsumerBackendService extends ConsumerBackendServiceGrpc.Con
 
     @Override
     public void consume (ConsumeRequest request, StreamObserver<ConsumeResponse> responseObserver) {
+        UUID requestId = UUID.randomUUID();
         try {
+            log.info("Change (id: {}) request received {}", requestId, JsonHelper.toSingleLine(request));
             Candidate candidate = request.getCandidate();
             switch (candidate) {
                 case SELF:
-                    responseObserver.onNext(consume(this.host, request));
+                    responseObserver.onNext(consume(this.host, request, requestId));
                     break;
                 case RANDOM:
                     List<ServiceRegistry.Instance> hostsForRandom = registry.call();
                     int hostIndex = ThreadLocalRandom.current().nextInt(hostsForRandom.size());
                     ServiceRegistry.Instance randomInstance = hostsForRandom.get(hostIndex);
-                    responseObserver.onNext(consume(randomInstance, request));
+                    responseObserver.onNext(consume(randomInstance, request, requestId));
                     break;
                 case SPECIFIC:
                     ServiceRegistry.Instance selectedInstance = new ServiceRegistry.Instance(request.getHost(),
                                                                                              request.getPort());
                     List<ServiceRegistry.Instance> hostsForValidation = registry.call();
                     Preconditions.checkArgument(hostsForValidation.stream().anyMatch(i -> i.equals(selectedInstance)));
-                    responseObserver.onNext(consume(selectedInstance, request));
+                    responseObserver.onNext(consume(selectedInstance, request, requestId));
                 case ALL:
                     List<ServiceRegistry.Instance> hosts = registry.call();
                     List<ConsumeResponse> responses = hosts.parallelStream()
@@ -86,7 +90,8 @@ public final class ConsumerBackendService extends ConsumerBackendServiceGrpc.Con
                                                                                               .addAllUsage(request.getUsageList())
                                                                                               //Convert to call a single actor instead of ALL.
                                                                                               .setCandidate(Candidate.SELF)
-                                                                                              .build()))
+                                                                                              .build(),
+                                                                             requestId))
                                                            .collect(Collectors.toList());
 
                     log.debug("Aggregating calls from ALL hosts: {}", responses);
@@ -115,7 +120,7 @@ public final class ConsumerBackendService extends ConsumerBackendServiceGrpc.Con
     /**
      * Runs consume method for self if necessary or passes to other host.
      */
-    protected ConsumeResponse consume(ServiceRegistry.Instance targetHost, ConsumeRequest request) {
+    protected ConsumeResponse consume(ServiceRegistry.Instance targetHost, ConsumeRequest request, UUID requestId) {
         boolean isThisHostBeingInvoked = this.host.equals(targetHost);
         List<UsageSpec> usages = Optional.ofNullable(request.getUsageList())
                                          .orElse(new ArrayList<>());
@@ -128,12 +133,21 @@ public final class ConsumerBackendService extends ConsumerBackendServiceGrpc.Con
                 consumer.orElseThrow(() -> new IllegalStateException("Could not find consumer for " + usage))
                         .setTarget(usage.getTarget(), usage.getUnit());
             }
-            return onSingleSuccess(usages);
+
+            ConsumeResponse response = onSingleSuccess(usages);
+            log.info("Change (id: " + requestId + ") request {} returned {}",
+                     JsonHelper.toSingleLine(request),
+                     JsonHelper.toSingleLine(response));
+            return response;
         } else {
             log.info("Propagating calls on to neighboring host {}", targetHost);
             try (ConsumerBackendClient client = new ConsumerBackendClient(targetHost.getAddress(),
                                                                           targetHost.getPort())) {
-                return client.call(request);
+                ConsumeResponse response = client.call(request);
+                log.info("Change (id: " + requestId + ") request {} returned {}",
+                         JsonHelper.toSingleLine(request),
+                         JsonHelper.toSingleLine(response));
+                return response;
             }
         }
     }

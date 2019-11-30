@@ -68,9 +68,14 @@ public final class RequestUtils {
                 }
             }
 
-            log.info("Sending/Saving a change request: {}", JsonHelper.toSingleLine(msg.build()));
+            ConsumeRequest consumeRequest = msg.build();
+            log.info("Change request: {}", JsonHelper.toSingleLine(consumeRequest));
+            ConsumeResponse response = client.call(consumeRequest);
+            log.info("Change request {} returned {}",
+                     JsonHelper.toSingleLine(consumeRequest),
+                     JsonHelper.toSingleLine(response));
 
-            return Optional.of(client.call(msg.build()));
+            return Optional.of(response);
         } else {
             return Optional.empty();
         }
@@ -80,7 +85,11 @@ public final class RequestUtils {
         ConsumeRequest request = ConsumeRequest.newBuilder()
                                                .setCandidate(Candidate.ALL)
                                                .build();
+        log.info("Describe request: {}", JsonHelper.toSingleLine(request));
         ConsumeResponse response = client.call(request);
+        log.info("Describe request {} returned {}",
+                 JsonHelper.toSingleLine(request),
+                 JsonHelper.toSingleLine(response));
         if(!response.getErrorList().isEmpty()) {
             throw new ConsumerDependencyException("Failed to describe: " + response);
         } else {
