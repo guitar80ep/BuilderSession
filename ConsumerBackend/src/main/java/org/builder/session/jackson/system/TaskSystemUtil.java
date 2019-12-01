@@ -53,7 +53,8 @@ public class TaskSystemUtil implements SystemUtil {
             long reservedContainerMemory = getTotalMemory(DigitalUnit.BYTES);
 
             //Setup rate trackers.
-            networkRateTracker = new RateTracker(() -> this.pollStats()
+            networkRateTracker = new RateTracker("NetworkTransmitTracker",
+                                                 () -> this.pollStats()
                                                            .getContainers()
                                                            .values()
                                                            .stream()
@@ -69,7 +70,8 @@ public class TaskSystemUtil implements SystemUtil {
                                                                                      .orElse(0L))
                                                            .sum(),
                                                  RATE_POLLING_PERIOD);
-            storageRateTracker = new RateTracker(() -> this.pollStats()
+            storageRateTracker = new RateTracker("StorageWriteTracker",
+                                                 () -> this.pollStats()
                                                            .getContainers()
                                                            .values()
                                                            .stream()

@@ -59,14 +59,16 @@ public class ContainerSystemUtil implements SystemUtil {
             }
 
             //Setup rate trackers.
-            networkRateTracker = new RateTracker(() -> this.pollStats()
+            networkRateTracker = new RateTracker("NetworkTransmitTracker",
+                                                 () -> this.pollStats()
                                                            .getNetworkStats()
                                                            .values()
                                                            .stream()
                                                            .mapToDouble(i -> i.getTransmittedBytes())
                                                            .sum(),
                                                  RATE_POLLING_PERIOD);
-            storageRateTracker = new RateTracker(() -> this.pollStats()
+            storageRateTracker = new RateTracker("StorageWriteTracker",
+                                                 () -> this.pollStats()
                                                            .getStorageStats()
                                                            .getVolumes()
                                                            .stream()
