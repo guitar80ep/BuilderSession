@@ -14,7 +14,7 @@ public class ConsoleController {
     @RequestMapping(value = "/",
                     method = { RequestMethod.GET, RequestMethod.POST})
     public String index(Model model) {
-        log.trace("Starting Index page! Model: " + model);
+        log.debug("Starting Index page! Model: " + model);
         return "index";
     }
 }

@@ -83,7 +83,7 @@ public class DiskConsumer extends AbstractPidConsumer {
                 synchronized (fileToWrite) {
                     try (OutputStream output = new FileOutputStream(fileToWrite)) {
                         int dataSize = scaleAdjustment.get();
-                        log.trace("Writing {} bytes to file {}.", dataSize, fileToWrite.getName());
+                        log.debug("Writing {} bytes to file {}.", dataSize, fileToWrite.getName());
                         writeData.setSize(dataSize > 0 ? dataSize : 1);
                         writeData.write(output);
                     }
@@ -106,7 +106,7 @@ public class DiskConsumer extends AbstractPidConsumer {
                     try (InputStream input = new FileInputStream(fileToRead)) {
                         while (input.available() > 0) {
                             int availableToRead = input.available();
-                            log.trace("Reading {} bytes from file {}.", availableToRead, fileToRead.getName());
+                            log.debug("Reading {} bytes from file {}.", availableToRead, fileToRead.getName());
                             readData.setSize(availableToRead <= 0 ? 1 : availableToRead);
                             readData.read(input, availableToRead);
                         }
@@ -127,7 +127,7 @@ public class DiskConsumer extends AbstractPidConsumer {
                 // This should be limited anyway due to the indexing.
                 synchronized (fileToDelete) {
                     //Erase next file...
-                    log.trace("Deleting file {}.", fileToDelete.getName());
+                    log.debug("Deleting file {}.", fileToDelete.getName());
                     FileUtilities.reset(fileToDelete, true);
                 }
             } catch (Throwable t) {

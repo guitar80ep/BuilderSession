@@ -77,7 +77,7 @@ public class NetworkConsumer extends AbstractPidConsumer {
         this.executor.scheduleAtFixedRate(() -> {
             try {
                 int dataSize = scaleAdjustment.get();
-                log.trace("Writing {} bytes to socket.", dataSize);
+                log.debug("Writing {} bytes to socket.", dataSize);
                 writeData.setSize(dataSize > 0 ? dataSize : 1);
                 writeData.write(writerSocket.getOutputStream());
             } catch (Throwable t) {
@@ -91,7 +91,7 @@ public class NetworkConsumer extends AbstractPidConsumer {
             try {
                 while (this.readerSocket.getInputStream().available() > 0) {
                     int remaining = this.readerSocket.getInputStream().available();
-                    log.trace("Reading {} bytes from socket.", remaining);
+                    log.debug("Reading {} bytes from socket.", remaining);
                     readData.setSize(remaining <= 0 ? 1 : remaining);
                     readData.read(readerSocket.getInputStream(), remaining);
                 }
