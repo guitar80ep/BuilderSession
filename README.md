@@ -7,13 +7,23 @@ A set of containers to automatically consume resources for a builder session on 
 ## Setup
 To setup the service in your ECS account, you merely perform a few simple steps. The estimated setup time is approximately 10 minutes.
 
-1. **Provide CodeBuild with Permissions.**
-    * Navigate to the CodeBuild console in your region of choice.
+1. **Sign into AWS Console**
+    * Go to https://aws.amazon.com/
+    * Click on "Sign-In" to Console in the top-right corner.
+    * Sign in with your credentials. Choose an IAM User with **Admin** permissions.
+    * Select a region to run this service in using the "Region" tab in the top-right corner. The default choice should be "US       East (N. Virginia)". From this point onward, it is **expected** that you are in this region for the following steps.           For Builder Sessions, it is **always** recommended to choose a region or account where no production work is being
+      run.
+2. **Provide CodeBuild with Permissions.**
+    * Navigate to the **CodeBuild** console.
     * Select "Create Project" and navigate to the "Source" section.
     * Type in this Repository information and provide CodeBuild access to your GitHub credentials.
+3. **Create a first-time Cluster and Service in ECS.**
+    * Navigate to the **ElasticContainerService (ECS)** console.
+    * This will create a default Cluster and Service that will setup ECS Execution Roles and Service Linked Roles in your           account.
+    * You can do this by going to  and walking through the steps for an ECS Service running on EC2.
 2. **Setup your Cloudformation stack.**
-    * Navigate to the Cloudformation console in your region of choice. Click CreateStack.
-    * Copy the Cloudformation template from ConsumerInfrastructure into the template definition.
+    * Navigate to the **Cloudformation** console. Click "CreateStack".
+    * Copy the Cloudformation template from [ConsumerInfrastructure](https://raw.githubusercontent.com/guitar80ep/BuilderSession/master/ConsumerInfrastructure/src/main/resources/CfnService.yaml) into the template definition.
     * Choose your parameters, but keep DesiredCount of Tasks set to 0 for the moment. Make sure to select a valid ecsTaskExecutionRole (specified by ARN from IAM Console).
     * Click Create and wait for the stack to start up and complete its update.
 3. **Build your images in CodeBuild.**
@@ -30,5 +40,4 @@ To setup the service in your ECS account, you merely perform a few simple steps.
     * Hit enter. You should see a simple console for inputting an API request.
 6. **Make a request.**
     * Input the data you would like to send in your request.
-    * Note that if the request is invalid you may see errors.
-    * Leaving all of the fields empty will result in a simple read of all the live Tasks.
+    * Hit save.
