@@ -128,9 +128,9 @@ public class NetworkConsumer extends AbstractPidConsumer {
                 Thread.sleep(TRANSMIT_PACE.toMillis());
                 int dataSize = scaleAdjustment.get();
                 dataSize = dataSize > 0 ? dataSize : 1;
-                log.debug("Writing {} bytes to socket.", dataSize);
                 writeData.setSize(dataSize);
                 writeData.write(socket.getOutputStream());
+                log.debug("Writing {} bytes to socket.", dataSize);
             }
         } catch (Throwable t) {
             log.error("Encountered error in NetworkConsumer Writer. Closing connection.", t);
@@ -158,6 +158,7 @@ public class NetworkConsumer extends AbstractPidConsumer {
                 int available = stream.available();
                 int newSize = available > 1 ? available : readData.getSize();
                 readData.setSize(newSize);
+                Thread.sleep(TRANSMIT_PACE.toMillis());
             }
         } catch (Throwable t) {
             log.error("Encountered error in NetworkConsumer Reader.", t);

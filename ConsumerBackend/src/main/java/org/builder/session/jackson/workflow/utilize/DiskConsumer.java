@@ -30,9 +30,9 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 public class DiskConsumer extends AbstractPidConsumer {
 
-    private static final long DEFAULT_INITIAL_TARGET = 10; // MB/Second
-    private static final Duration WRITE_PACE = Duration.ofMillis(50);
-    private static final Duration SWAP_PACE = Duration.ofSeconds(5);
+    private static final long DEFAULT_INITIAL_TARGET = 10000; // 10 MB/Second
+    private static final Duration WRITE_PACE = Duration.ofMillis(500);
+    private static final Duration SWAP_PACE = Duration.ofSeconds(20);
     private static final int FILE_BUFFER_SIZE = 3;
 
     @Getter
@@ -49,7 +49,7 @@ public class DiskConsumer extends AbstractPidConsumer {
     public DiskConsumer (@NonNull final SystemUtil system, @NonNull final PIDConfig pidConfig) {
         this(DigitalUnit.BYTES_PER_SECOND
                         .from(DEFAULT_INITIAL_TARGET,
-                              DigitalUnit.MEGABYTES_PER_SECOND),
+                              DigitalUnit.KILOBYTES_PER_SECOND),
              system,
              pidConfig);
     }
