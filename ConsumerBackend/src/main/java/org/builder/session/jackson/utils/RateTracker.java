@@ -15,6 +15,8 @@ import lombok.extern.slf4j.Slf4j;
 public class RateTracker {
 
     @NonNull
+    private final String name;
+    @NonNull
     private final Supplier<Double> functionToReadTotal;
     @Getter
     @NonNull
@@ -24,8 +26,10 @@ public class RateTracker {
     @NonNull
     private StatTracker stats;
 
-    public RateTracker (@NonNull final Supplier<Double> functionToReadTotal,
+    public RateTracker (@NonNull final String name,
+                        @NonNull final Supplier<Double> functionToReadTotal,
                         @NonNull final Duration pollingPeriod) {
+        this.name = name;
         this.functionToReadTotal = functionToReadTotal;
         this.pollingPeriod = pollingPeriod;
         this.executorService = Executors.newSingleThreadScheduledExecutor();
@@ -35,7 +39,10 @@ public class RateTracker {
                 try {
                     //This ensures that the pacing is accurate.
                     synchronized (stats) {
-                        stats.addStat(functionToReadTotal.get());
+                        double value = functionToReadTotal.get();
+                        stats.addStat(value);
+                        log.debug("Rate tracker {} polled {} and added to stats {}",
+                                  new Object[] { this.name, value, stats });
                     }
                     Thread.sleep(pollingPeriod.toMillis());
                 } catch (Throwable t) {
@@ -51,7 +58,9 @@ public class RateTracker {
      */
     public Optional<Double> getLatestRate(TimeUnit unit) {
         synchronized (stats) {
-            return stats.getLatestRate(unit);
+            Optional<Double> latestRate = stats.getLatestRate(unit);
+            log.debug("Gathering latest rate {}.", stats);
+            return latestRate;
         }
     }
 }
