@@ -37,14 +37,15 @@ public class RateTracker {
         this.executorService.submit(() -> {
             while (true) {
                 try {
-                    //This ensures that the pacing is accurate.
-                    synchronized (stats) {
-                        double value = functionToReadTotal.get();
-                        stats.addStat(value);
-                        log.debug("Rate tracker {} polled {} and added to stats {}",
-                                  new Object[] { this.name, value, stats });
-                    }
                     Thread.sleep(pollingPeriod.toMillis());
+
+                    //This ensures that the pacing is accurate.
+                    double value = functionToReadTotal.get();
+                    synchronized (stats) {
+                        stats.addStat(value);
+                    }
+                    log.debug("Rate tracker {} polled {} and added to stats {}",
+                              new Object[] { this.name, value, stats });
                 } catch (Throwable t) {
                     log.error("Caught error in background polling thread for RateTracker.", t);
                 }
