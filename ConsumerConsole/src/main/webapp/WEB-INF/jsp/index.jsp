@@ -75,6 +75,7 @@
                 <form action="" method="post">
                     <consumer:HostView instance="${hostToView}" candidate="<%= Candidate.SPECIFIC %>"/>
                 </form>
+                <br/>
             </c:forEach>
         </div>
 

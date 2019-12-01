@@ -152,12 +152,12 @@ public class NetworkConsumer extends AbstractPidConsumer {
         try {
             DynamicByteArray readData = new DynamicByteArray();
             while(true) {
-                Thread.sleep(TRANSMIT_PACE.toMillis());
                 InputStream stream = socket.getInputStream();
+                int readByteCount = readData.read(stream);
+                log.debug("Read {} bytes from socket.", readByteCount);
                 int available = stream.available();
-                log.debug("Reading {} bytes from socket.", available);
-                readData.setSize(available);
-                readData.read(stream, available);
+                int newSize = available > 1 ? available : readData.getSize();
+                readData.setSize(newSize);
             }
         } catch (Throwable t) {
             log.error("Encountered error in NetworkConsumer Reader.", t);
