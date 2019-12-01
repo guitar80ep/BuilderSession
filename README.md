@@ -18,7 +18,7 @@ To setup the service in your ECS account, you merely perform a few simple steps.
     * Select "Create Project" and navigate to the "Source" section.
     * Type in this Repository information and provide CodeBuild access to your GitHub credentials.
 3. **Create a first-time Cluster and Service in ECS.**
-    * Navigate to the **ElasticContainerService (ECS)** console.
+    * Navigate to the **ElasticContainerService (ECS)** console via the [First Run Wizard](https://console.aws.amazon.com/ecs/home#/firstRun)
     * This will create a default Cluster and Service that will setup ECS Execution Roles and Service Linked Roles in your           account.
     * You can do this by going to  and walking through the steps for an ECS Service running on EC2.
 2. **Setup your Cloudformation stack.**
