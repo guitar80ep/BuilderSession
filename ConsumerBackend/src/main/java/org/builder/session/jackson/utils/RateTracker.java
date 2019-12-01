@@ -59,7 +59,7 @@ public class RateTracker {
     public Optional<Double> getLatestRate(TimeUnit unit) {
         synchronized (stats) {
             Optional<Double> latestRate = stats.getLatestRate(unit);
-            log.debug("Gathering latest rate {}.", stats);
+            log.debug("Gathering latest {} rate {}.", name, stats);
             return latestRate;
         }
     }

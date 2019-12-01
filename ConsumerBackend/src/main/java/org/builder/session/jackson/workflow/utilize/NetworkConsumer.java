@@ -77,6 +77,7 @@ public class NetworkConsumer extends AbstractPidConsumer {
                 while (true) {
                     try {
                         Socket newConnection = server.accept();
+                        log.info("Client connected: {}", newConnection);
                         this.executor.submit(() -> runWriter(newConnection));
                     } catch (Throwable t) {
                         log.error("Caught error in NetworkConsumer connection handler thread.", t);
@@ -101,7 +102,7 @@ public class NetworkConsumer extends AbstractPidConsumer {
                             }
 
                             if(!future.isPresent()) {
-                                Socket newConnection = new Socket(i.getAddress(), i.getPort());
+                                Socket newConnection = new Socket(i.getAddress(), LISTENER_PORT);
                                 Future newFuture = this.executor.submit(() -> runReader(newConnection));
                                 connectionsMap.put(i, newFuture);
                             }
