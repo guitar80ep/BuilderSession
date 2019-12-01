@@ -25,7 +25,7 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 public class NetworkConsumer extends AbstractPidConsumer {
 
-    private static final long DEFAULT_INITIAL_TARGET = 500; // KB/Second
+    private static final long DEFAULT_INITIAL_TARGET = 1024;
     private static final Duration TRANSMIT_PACE = Duration.ofMillis(50);
 
     @Getter
@@ -42,8 +42,6 @@ public class NetworkConsumer extends AbstractPidConsumer {
     private final ScheduledExecutorService executor;
     @NonNull
     private final AtomicInteger scaleAdjustment = new AtomicInteger(0);
-    @Getter
-    private long targetRate;
 
     public NetworkConsumer (@NonNull final SystemUtil system, @NonNull final PIDConfig pidConfig) {
         this(DigitalUnit.BYTES_PER_SECOND
@@ -123,22 +121,22 @@ public class NetworkConsumer extends AbstractPidConsumer {
 
     @Override
     protected Unit getStoredUnit () {
-        return Unit.BYTES_PER_SECOND;
+        return Unit.KILOBYTES_PER_SECOND;
     }
 
     @Override
     public Unit getDefaultUnit () {
-        return Unit.BYTES_PER_SECOND;
+        return Unit.KILOBYTES_PER_SECOND;
     }
 
     @Override
     protected long getGoal () {
-        return (long) getTarget(Unit.KILOBYTES_PER_SECOND);
+        return (long) getTarget(getStoredUnit());
     }
 
     @Override
     protected long getConsumed () {
-        return (long) getActual(Unit.KILOBYTES_PER_SECOND);
+        return (long) getActual(getStoredUnit());
     }
 
     @Override

@@ -30,11 +30,10 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 public class DiskConsumer extends AbstractPidConsumer {
 
-    private static final long DEFAULT_INITIAL_TARGET = 500; // KB/Second
+    private static final long DEFAULT_INITIAL_TARGET = 10; // MB/Second
     private static final Duration WRITE_PACE = Duration.ofMillis(50);
     private static final Duration SWAP_PACE = Duration.ofSeconds(5);
     private static final int FILE_BUFFER_SIZE = 3;
-    public static final double NORMALIZER = 10.0;
 
     @Getter
     private final String name = "DiskConsumer";
@@ -50,7 +49,7 @@ public class DiskConsumer extends AbstractPidConsumer {
     public DiskConsumer (@NonNull final SystemUtil system, @NonNull final PIDConfig pidConfig) {
         this(DigitalUnit.BYTES_PER_SECOND
                         .from(DEFAULT_INITIAL_TARGET,
-                              DigitalUnit.KILOBYTES_PER_SECOND),
+                              DigitalUnit.MEGABYTES_PER_SECOND),
              system,
              pidConfig);
     }
@@ -86,6 +85,7 @@ public class DiskConsumer extends AbstractPidConsumer {
                         log.debug("Writing {} bytes to file {}.", dataSize, fileToWrite.getName());
                         writeData.setSize(dataSize > 0 ? dataSize : 1);
                         writeData.write(output);
+                        output.flush();
                     }
                 }
             } catch (Throwable t) {
@@ -171,22 +171,22 @@ public class DiskConsumer extends AbstractPidConsumer {
 
     @Override
     protected Unit getStoredUnit () {
-        return Unit.BYTES_PER_SECOND;
+        return Unit.KILOBYTES_PER_SECOND;
     }
 
     @Override
     public Unit getDefaultUnit () {
-        return Unit.BYTES_PER_SECOND;
+        return Unit.KILOBYTES_PER_SECOND;
     }
 
     @Override
     protected long getGoal () {
-        return (long) (getTarget(Unit.MEGABYTES_PER_SECOND) / NORMALIZER);
+        return (long) getTarget(getStoredUnit());
     }
 
     @Override
     protected long getConsumed () {
-        return (long) (getActual(Unit.MEGABYTES_PER_SECOND) / NORMALIZER);
+        return (long) getActual(getStoredUnit());
     }
 
     @Override
