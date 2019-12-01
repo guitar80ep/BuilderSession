@@ -8,7 +8,7 @@ import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
 @RequiredArgsConstructor
-public abstract class AbstractPidConsumer implements Consumer {
+public abstract class AbstractPidConsumer extends AbstractConsumer {
 
     @NonNull
     private final PIDConfig config;
@@ -74,10 +74,5 @@ public abstract class AbstractPidConsumer implements Consumer {
                 log.error("Caught an exception while consuming resources for {}. Swallowing.", this.getClass().getSimpleName(), t);
             }
         }
-    }
-
-    @Override
-    public void close () {
-
     }
 }

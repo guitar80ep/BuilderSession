@@ -11,7 +11,6 @@ import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -19,6 +18,7 @@ import org.build.session.jackson.proto.Unit;
 import org.builder.session.jackson.exception.ConsumerInternalException;
 import org.builder.session.jackson.system.DigitalUnit;
 import org.builder.session.jackson.system.SystemUtil;
+import org.builder.session.jackson.utils.DynamicByteArray;
 import org.builder.session.jackson.utils.FileUtilities;
 
 import com.google.common.base.Preconditions;
@@ -34,6 +34,7 @@ public class DiskConsumer extends AbstractPidConsumer {
     private static final Duration WRITE_PACE = Duration.ofMillis(50);
     private static final Duration SWAP_PACE = Duration.ofSeconds(5);
     private static final int FILE_BUFFER_SIZE = 3;
+    public static final double NORMALIZER = 10.0;
 
     @Getter
     private final String name = "DiskConsumer";
@@ -45,8 +46,6 @@ public class DiskConsumer extends AbstractPidConsumer {
     private final AtomicInteger scaleAdjustment = new AtomicInteger(0);
     @NonNull
     private final List<File> fileBuffer = new ArrayList<>(FILE_BUFFER_SIZE);
-    @Getter
-    private long targetRate;
 
     public DiskConsumer (@NonNull final SystemUtil system, @NonNull final PIDConfig pidConfig) {
         this(DigitalUnit.BYTES_PER_SECOND
@@ -59,7 +58,7 @@ public class DiskConsumer extends AbstractPidConsumer {
     public DiskConsumer (final long targetRateInBytes, @NonNull final SystemUtil system, @NonNull final PIDConfig pidConfig) {
         super(pidConfig);
         this.system = system;
-        this.setTarget(targetRateInBytes, getDefaultUnit());
+        this.setTarget(targetRateInBytes, Unit.BYTES_PER_SECOND);
         this.executor = Executors.newScheduledThreadPool(4);
 
         //Prepare file buffers for data transfer.
@@ -75,6 +74,7 @@ public class DiskConsumer extends AbstractPidConsumer {
         }
 
         //Start Writer
+        DynamicByteArray writeData = new DynamicByteArray();
         this.executor.scheduleAtFixedRate(() -> {
             try {
                 File fileToWrite = fileBuffer.get(calculateIndex(fileRef.get(), FILE_BUFFER_SIZE, 0));
@@ -84,9 +84,8 @@ public class DiskConsumer extends AbstractPidConsumer {
                     try (OutputStream output = new FileOutputStream(fileToWrite)) {
                         int dataSize = scaleAdjustment.get();
                         log.trace("Writing {} bytes to file {}.", dataSize, fileToWrite.getName());
-                        byte[] data = new byte[dataSize > 0 ? dataSize : 0];
-                        ThreadLocalRandom.current().nextBytes(data);
-                        output.write(data);
+                        writeData.setSize(dataSize > 0 ? dataSize : 1);
+                        writeData.write(output);
                     }
                 }
             } catch (Throwable t) {
@@ -97,6 +96,7 @@ public class DiskConsumer extends AbstractPidConsumer {
         }, 0, WRITE_PACE.toMillis(), TimeUnit.MILLISECONDS);
 
         //Start Reader
+        DynamicByteArray readData = new DynamicByteArray();
         this.executor.scheduleAtFixedRate(() -> {
             try {
                 File fileToRead = fileBuffer.get(calculateIndex(fileRef.get(), FILE_BUFFER_SIZE, 1));
@@ -107,7 +107,8 @@ public class DiskConsumer extends AbstractPidConsumer {
                         while (input.available() > 0) {
                             int availableToRead = input.available();
                             log.trace("Reading {} bytes from file {}.", availableToRead, fileToRead.getName());
-                            input.read(new byte[availableToRead]);
+                            readData.setSize(availableToRead <= 0 ? 1 : availableToRead);
+                            readData.read(input, availableToRead);
                         }
                     }
                 }
@@ -149,24 +150,28 @@ public class DiskConsumer extends AbstractPidConsumer {
     }
 
     @Override
-    public void setTarget (double value, @NonNull Unit unit) {
-        DigitalUnit internalUnit = DigitalUnit.from(getDefaultUnit());
-        Preconditions.checkArgument(DigitalUnit.from(unit).canConvertTo(internalUnit),
-                                    "Must specify a storage unit, but got " + unit);
-        Preconditions.checkArgument(value >= 0, "Must specify a non-negative value, but got " + unit);
-        log.info("Setting Disk consumption from " + this.targetRate + " to " + value + " at " + unit.name());
-        this.targetRate = (long) internalUnit.from(value, DigitalUnit.from(unit));
+    public boolean isUnitAllowed (Unit unit) {
+        return DigitalUnit.from(getStoredUnit()).canConvertTo(unit);
     }
 
     @Override
-    public double getTarget (Unit unit) {
-        return DigitalUnit.from(unit).from(targetRate,
-                                           DigitalUnit.from(getDefaultUnit()));
+    protected double convertFromStoredUnitTo (double storedValue, Unit unit) {
+        return DigitalUnit.from(unit).from(storedValue, getStoredUnit());
     }
 
     @Override
-    public double getActual (Unit unit) {
-        return this.system.getNetworkUsage(DigitalUnit.from(unit));
+    protected double convertToStoredUnitFrom (double value, Unit unit) {
+        return DigitalUnit.from(getStoredUnit()).from(value, unit);
+    }
+
+    @Override
+    public double getActual () {
+        return this.system.getStorageUsage(DigitalUnit.from(getStoredUnit()));
+    }
+
+    @Override
+    protected Unit getStoredUnit () {
+        return Unit.BYTES_PER_SECOND;
     }
 
     @Override
@@ -176,12 +181,12 @@ public class DiskConsumer extends AbstractPidConsumer {
 
     @Override
     protected long getGoal () {
-        return (long) getTarget(getDefaultUnit());
+        return (long) (getTarget(Unit.MEGABYTES_PER_SECOND) / NORMALIZER);
     }
 
     @Override
     protected long getConsumed () {
-        return (long) getActual(getDefaultUnit());
+        return (long) (getActual(Unit.MEGABYTES_PER_SECOND) / NORMALIZER);
     }
 
     @Override
@@ -203,7 +208,7 @@ public class DiskConsumer extends AbstractPidConsumer {
         try {
             executor.shutdown();
         } catch (Throwable t) {
-            throw new RuntimeException("Failed to close NetworkConsumer.", t);
+            throw new RuntimeException("Failed to close DiskConsumer.", t);
         }
         super.close();
     }

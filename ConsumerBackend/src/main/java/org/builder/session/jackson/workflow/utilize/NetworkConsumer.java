@@ -7,7 +7,6 @@ import java.time.Duration;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -15,6 +14,7 @@ import org.build.session.jackson.proto.Unit;
 import org.builder.session.jackson.exception.ConsumerInternalException;
 import org.builder.session.jackson.system.DigitalUnit;
 import org.builder.session.jackson.system.SystemUtil;
+import org.builder.session.jackson.utils.DynamicByteArray;
 
 import com.google.common.base.Preconditions;
 
@@ -56,7 +56,7 @@ public class NetworkConsumer extends AbstractPidConsumer {
     public NetworkConsumer (final long targetRateInBytes, @NonNull final SystemUtil system, @NonNull final PIDConfig pidConfig) {
         super(pidConfig);
         this.system = system;
-        this.setTarget(targetRateInBytes, getDefaultUnit());
+        this.setTarget(targetRateInBytes, Unit.BYTES_PER_SECOND);
 
         //Setup Web Socket connection with loopback.
         int dynamicPort = 0;
@@ -73,25 +73,27 @@ public class NetworkConsumer extends AbstractPidConsumer {
         }
 
         //Start Writer
+        DynamicByteArray writeData = new DynamicByteArray();
         this.executor.scheduleAtFixedRate(() -> {
             try {
                 int dataSize = scaleAdjustment.get();
                 log.trace("Writing {} bytes to socket.", dataSize);
-                byte[] data = new byte[dataSize > 0 ? dataSize : 0];
-                ThreadLocalRandom.current().nextBytes(data);
-                writerSocket.getOutputStream().write(data);
+                writeData.setSize(dataSize > 0 ? dataSize : 1);
+                writeData.write(writerSocket.getOutputStream());
             } catch (Throwable t) {
                 log.error("Encountered error in NetworkConsumer Writer.", t);
             }
         }, 0, TRANSMIT_PACE.toMillis(), TimeUnit.MILLISECONDS);
 
         //Start Reader
+        DynamicByteArray readData = new DynamicByteArray();
         this.executor.scheduleAtFixedRate(() -> {
             try {
                 while (this.readerSocket.getInputStream().available() > 0) {
                     int remaining = this.readerSocket.getInputStream().available();
                     log.trace("Reading {} bytes from socket.", remaining);
-                    this.readerSocket.getInputStream().read(new byte[remaining]);
+                    readData.setSize(remaining <= 0 ? 1 : remaining);
+                    readData.read(readerSocket.getInputStream(), remaining);
                 }
             } catch (Throwable t) {
                 log.error("Encountered error in NetworkConsumer Reader.", t);
@@ -100,24 +102,28 @@ public class NetworkConsumer extends AbstractPidConsumer {
     }
 
     @Override
-    public void setTarget (double value, @NonNull Unit unit) {
-        DigitalUnit internalUnit = DigitalUnit.from(getDefaultUnit());
-        Preconditions.checkArgument(DigitalUnit.from(unit).canConvertTo(internalUnit),
-                                    "Must specify a network unit, but got " + unit);
-        Preconditions.checkArgument(value >= 0,
-                                    "Must specify a non-negative value, but got " + unit);
-        log.info("Setting Network consumption from " + this.targetRate + " to " + value + " at " + unit.name());
-        this.targetRate = (long) internalUnit.from(value, DigitalUnit.from(unit));
+    public boolean isUnitAllowed (Unit unit) {
+        return DigitalUnit.from(getStoredUnit()).canConvertTo(unit);
     }
 
     @Override
-    public double getTarget (Unit unit) {
-        return DigitalUnit.from(unit).from(targetRate, DigitalUnit.from(getDefaultUnit()));
+    protected double convertFromStoredUnitTo (double storedValue, Unit unit) {
+        return DigitalUnit.from(unit).from(storedValue, getStoredUnit());
     }
 
     @Override
-    public double getActual (Unit unit) {
-        return this.system.getNetworkUsage(DigitalUnit.from(unit));
+    protected double convertToStoredUnitFrom (double value, Unit unit) {
+        return DigitalUnit.from(getStoredUnit()).from(value, unit);
+    }
+
+    @Override
+    public double getActual () {
+        return this.system.getNetworkUsage(DigitalUnit.from(getStoredUnit()));
+    }
+
+    @Override
+    protected Unit getStoredUnit () {
+        return Unit.BYTES_PER_SECOND;
     }
 
     @Override
@@ -127,12 +133,12 @@ public class NetworkConsumer extends AbstractPidConsumer {
 
     @Override
     protected long getGoal () {
-        return (long) getTarget(getDefaultUnit());
+        return (long) getTarget(Unit.KILOBYTES_PER_SECOND);
     }
 
     @Override
     protected long getConsumed () {
-        return (long) getActual(getDefaultUnit());
+        return (long) getActual(Unit.KILOBYTES_PER_SECOND);
     }
 
     @Override

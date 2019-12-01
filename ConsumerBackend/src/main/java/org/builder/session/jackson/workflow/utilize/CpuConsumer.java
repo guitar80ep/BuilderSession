@@ -16,8 +16,6 @@ import org.builder.session.jackson.system.DigitalUnit;
 import org.builder.session.jackson.system.SystemUtil;
 
 import com.google.common.base.Preconditions;
-import com.google.common.collect.ImmutableMap;
-import com.google.common.collect.Range;
 
 import lombok.Getter;
 import lombok.NonNull;
@@ -26,7 +24,6 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 public class CpuConsumer extends AbstractPidConsumer {
 
-    private static final DigitalUnit BASE_UNIT = DigitalUnit.VCPU;
     private static final double DEFAULT_INITIAL_TARGET = 0.33;
     private static final Duration PERIOD =
             Duration.ofMillis(Integer.parseInt(System.getenv("CONSUMER_CPU_PERIOD_IN_MILLIS")));
@@ -40,13 +37,9 @@ public class CpuConsumer extends AbstractPidConsumer {
     @NonNull
     private final ExecutorService executorService;
     @NonNull
-    private final ImmutableMap<Unit, Double> max;
-    @NonNull
     private final List<AtomicLong> workloads;
     @NonNull
     private final AtomicLong scaleAdjustment = new AtomicLong(0);
-    @Getter
-    private double targetPercentage;
 
     public CpuConsumer(@NonNull final SystemUtil system,
                           @NonNull final PIDConfig pidConfig) {
@@ -63,9 +56,6 @@ public class CpuConsumer extends AbstractPidConsumer {
                                                           .getOnlineCpus();
         Preconditions.checkArgument(hostProcessorCount > 0, "Processor count must be positive.");
         this.system = system;
-        this.max = ImmutableMap.<Unit, Double>builder().put(Unit.PERCENTAGE, 1.0)
-                                            .put(Unit.VCPU, (double)this.system.getTotalCpu(DigitalUnit.VCPU))
-                                            .build();
         this.setTarget(targetPercentage, Unit.PERCENTAGE);
 
         /**
@@ -169,29 +159,36 @@ public class CpuConsumer extends AbstractPidConsumer {
     }
 
     @Override
-    public void setTarget (double value, @NonNull Unit unit) {
-        boolean isPercentage = DigitalUnit.isPercentage(unit);
-        Preconditions.checkArgument(isPercentage || BASE_UNIT.canConvertTo(DigitalUnit.from(unit)),
-                                    "Must specify a compute unit, but got " + unit);
-        Preconditions.checkArgument(Range.open(0.0, max.get(unit)).contains(value),
-                                    "Must specify a value in max (0.0, " + max.get(unit) + "), but got " + unit);
-        log.info("Setting CPU consumption from " + this.targetPercentage + " to " + value + " at " + unit.name());
-        this.targetPercentage = value / max.get(unit);
+    public boolean isUnitAllowed (Unit unit) {
+        return DigitalUnit.isPercentage(unit) || DigitalUnit.VCPU.canConvertTo(unit);
     }
 
     @Override
-    public double getTarget (Unit unit) {
-        boolean isPercentage = DigitalUnit.isPercentage(unit);
-        Preconditions.checkArgument(isPercentage || BASE_UNIT.canConvertTo(DigitalUnit.from(unit)),
-                                    "Must specify a compute unit, but got " + unit);
-        return isPercentage ? this.getTargetPercentage()
-                            : DigitalUnit.from(unit).from(getGoal(), DigitalUnit.VCPU);
+    protected double convertFromStoredUnitTo (double storedValue, Unit unit) {
+        if(DigitalUnit.isPercentage(unit)) {
+            return storedValue;
+        } else {
+            return storedValue * this.system.getTotalCpu(DigitalUnit.from(unit));
+        }
     }
 
     @Override
-    public double getActual (Unit unit) {
-        return DigitalUnit.isPercentage(unit) ? this.system.getCpuPercentage()
-                                              : this.system.getUsedCpu(DigitalUnit.from(unit));
+    protected double convertToStoredUnitFrom (double value, Unit unit) {
+        if(DigitalUnit.isPercentage(unit)) {
+            return value;
+        } else {
+            return value / this.system.getTotalCpu(DigitalUnit.from(unit));
+        }
+    }
+
+    @Override
+    public double getActual () {
+        return this.system.getCpuPercentage();
+    }
+
+    @Override
+    public Unit getStoredUnit () {
+        return Unit.PERCENTAGE;
     }
 
     @Override
@@ -201,12 +198,12 @@ public class CpuConsumer extends AbstractPidConsumer {
 
     @Override
     protected long getGoal () {
-        return (long)(this.system.getTotalCpu(DigitalUnit.VCPU) * this.getTargetPercentage());
+        return (long)getTarget(Unit.VCPU);
     }
 
     @Override
     protected long getConsumed () {
-        return this.system.getUsedCpu(DigitalUnit.VCPU);
+        return (long)getActual(Unit.VCPU);
     }
 
     @Override

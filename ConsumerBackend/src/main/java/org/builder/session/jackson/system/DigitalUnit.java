@@ -53,10 +53,24 @@ public enum DigitalUnit {
     }
 
     /**
+     * Convert to this unit from the specified value and unit.
+     */
+    public double from(double value, @NonNull Unit unitOfValue) {
+        return this.from(value, DigitalUnit.from(unitOfValue));
+    }
+
+    /**
      * Convert to this unit from the specified value and unit. Truncated rounding.
      */
     public long from(long value, @NonNull DigitalUnit unitOfValue) {
         return (long)this.from((double)value, unitOfValue);
+    }
+
+    /**
+     * Convert to this unit from the specified value and unit. Truncated rounding.
+     */
+    public double from(long value, @NonNull Unit unitOfValue) {
+        return this.from(value, DigitalUnit.from(unitOfValue));
     }
 
     /**
@@ -71,6 +85,13 @@ public enum DigitalUnit {
      */
     public boolean canConvertTo(DigitalUnit unit) {
         return this.baseMeasure == unit.baseMeasure;
+    }
+
+    /**
+     * Determines if the two units can be converted between.
+     */
+    public boolean canConvertTo(Unit unit) {
+        return this.canConvertTo(from(unit));
     }
 
     /**

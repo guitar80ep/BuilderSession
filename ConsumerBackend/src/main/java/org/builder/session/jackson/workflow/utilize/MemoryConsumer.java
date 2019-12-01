@@ -8,8 +8,6 @@ import org.builder.session.jackson.system.DigitalUnit;
 import org.builder.session.jackson.system.SystemUtil;
 
 import com.google.common.base.Preconditions;
-import com.google.common.collect.ImmutableMap;
-import com.google.common.collect.Range;
 
 import lombok.Getter;
 import lombok.NonNull;
@@ -18,7 +16,6 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 public class MemoryConsumer extends AbstractPidConsumer {
 
-    private static final DigitalUnit BASE_UNIT = DigitalUnit.BYTES;
     private static final double DEFAULT_INITIAL_TARGET = 0.33;
     public static final int MEMORY_PER_LOAD_IN_BYTES =
             Integer.parseInt(System.getenv("CONSUMER_MEMORY_PER_LOAD_IN_BYTES"));
@@ -29,10 +26,6 @@ public class MemoryConsumer extends AbstractPidConsumer {
     private final SystemUtil system;
     @NonNull
     private Queue<byte[]> load = new LinkedList<>();
-    @Getter
-    private double targetPercentage;
-    @NonNull
-    private final ImmutableMap<org.build.session.jackson.proto.Unit, Double> max;
 
     public MemoryConsumer(@NonNull final SystemUtil system,
                           @NonNull final PIDConfig pidConfig) {
@@ -44,37 +37,40 @@ public class MemoryConsumer extends AbstractPidConsumer {
                           @NonNull final PIDConfig pidConfig) {
         super(pidConfig);
         this.system = system;
-        this.max = ImmutableMap.<org.build.session.jackson.proto.Unit, Double>builder()
-                .put(org.build.session.jackson.proto.Unit.PERCENTAGE, 1.0)
-                .put(org.build.session.jackson.proto.Unit.BYTES, (double)this.system.getTotalMemory(DigitalUnit.BYTES))
-                .put(org.build.session.jackson.proto.Unit.KILOBYTES, (double)this.system.getTotalMemory(DigitalUnit.KILOBYTES))
-                .put(org.build.session.jackson.proto.Unit.MEGABYTES, (double)this.system.getTotalMemory(DigitalUnit.MEGABYTES))
-                .put(org.build.session.jackson.proto.Unit.GIGABYTES, (double) this.system.getTotalMemory(DigitalUnit.GIGABYTES))
-                .build();
         setTarget(targetPercentage, Unit.PERCENTAGE);
     }
 
     @Override
-    public void setTarget (double value, @NonNull Unit unit) {
-        boolean isPercentage = DigitalUnit.isPercentage(unit);
-        Preconditions.checkArgument(isPercentage || BASE_UNIT.canConvertTo(DigitalUnit.from(unit)),
-                                    "Must specify a memory unit, but got " + unit);
-        Preconditions.checkArgument(Range.open(0.0, max.get(unit)).contains(value),
-                                    "Must specify a value in max (0.0, " + max.get(unit) + "), but got " + unit);
-        log.info("Setting Memory consumption from " + this.targetPercentage + " to " + value + " at " + unit.name());
-        this.targetPercentage = value / max.get(unit);
+    public boolean isUnitAllowed (Unit unit) {
+        return DigitalUnit.isPercentage(unit) || DigitalUnit.BYTES.canConvertTo(unit);
     }
 
     @Override
-    public double getTarget(Unit unit) {
-        return DigitalUnit.isPercentage(unit) ? this.getTargetPercentage()
-                                              : this.system.getUsedMemory(DigitalUnit.from(unit));
+    protected double convertFromStoredUnitTo (double storedValue, Unit unit) {
+        if(DigitalUnit.isPercentage(unit)) {
+            return storedValue;
+        } else {
+            return storedValue * this.system.getTotalMemory(DigitalUnit.from(unit));
+        }
     }
 
     @Override
-    public double getActual (Unit unit) {
-        return DigitalUnit.isPercentage(unit) ? this.system.getMemoryPercentage()
-                                              : DigitalUnit.from(unit).from(getConsumed(), DigitalUnit.MEGABYTES);
+    protected double convertToStoredUnitFrom (double value, Unit unit) {
+        if(DigitalUnit.isPercentage(unit)) {
+            return value;
+        } else {
+            return value / this.system.getTotalMemory(DigitalUnit.from(unit));
+        }
+    }
+
+    @Override
+    public double getActual () {
+        return this.system.getMemoryPercentage();
+    }
+
+    @Override
+    protected Unit getStoredUnit () {
+        return Unit.PERCENTAGE;
     }
 
     @Override
@@ -84,12 +80,12 @@ public class MemoryConsumer extends AbstractPidConsumer {
 
     @Override
     protected long getGoal () {
-        return (long)(this.system.getTotalMemory(DigitalUnit.MEGABYTES) * this.getTargetPercentage());
+        return (long)getTarget(Unit.MEGABYTES);
     }
 
     @Override
     protected long getConsumed () {
-        return this.system.getUsedMemory(DigitalUnit.MEGABYTES);
+        return (long)getActual(Unit.MEGABYTES);
     }
 
     @Override
