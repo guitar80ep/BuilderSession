@@ -23,7 +23,7 @@ To setup the service in your ECS account, you merely perform a few simple steps.
     * You can do this by going to  and walking through the steps for an ECS Service running on EC2.
 2. **Setup your Cloudformation stack.**
     * Navigate to the **Cloudformation** console. Click "CreateStack".
-    * Copy the Cloudformation template from [ConsumerInfrastructure](https://raw.githubusercontent.com/guitar80ep/BuilderSession/master/ConsumerInfrastructure/src/main/resources/CfnService.yaml) into the template definition.
+    * Copy the Cloudformation template from [ConsumerInfrastructure](https://github.com/guitar80ep/BuilderSession/blob/master/ConsumerInfrastructure/src/main/resources/CfnService.yaml) into the template definition.
     * Choose your parameters, but keep DesiredCount of Tasks set to 0 for the moment. Make sure to select a valid ecsTaskExecutionRole (specified by ARN from IAM Console).
     * Click Create and wait for the stack to start up and complete its update.
 3. **Build your images in CodeBuild.**
