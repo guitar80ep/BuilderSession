@@ -16,6 +16,7 @@ To setup the service in your ECS account, you merely perform a few simple steps.
 2. **Provide CodeBuild with Permissions.**
     * Navigate to the **CodeBuild** console.
     * Select "Create Project" and navigate to the "Source" section.
+    * Click "Connect Using OAuth" and "Connect to GitHub".
     * Type in this Repository information and provide CodeBuild access to your GitHub credentials.
 3. **Create a first-time Cluster and Service in ECS.**
     * Navigate to the **ElasticContainerService (ECS)** console via the [First Run Wizard](https://console.aws.amazon.com/ecs/home#/firstRun)
