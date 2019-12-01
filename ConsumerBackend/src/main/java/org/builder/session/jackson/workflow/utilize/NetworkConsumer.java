@@ -121,6 +121,7 @@ public class NetworkConsumer extends AbstractPidConsumer {
      * Runs a writer that constantly writes data out to a listener.
      */
     private void runWriter(Socket socket) {
+        log.info("Connected new writer at socket: " + socket);
         try {
             DynamicByteArray writeData = new DynamicByteArray();
             while (true) {
@@ -147,6 +148,7 @@ public class NetworkConsumer extends AbstractPidConsumer {
      * the data if necessary to maintain consumption goals.
      */
     private void runReader(Socket socket) {
+        log.info("Connected new reader at socket: " + socket);
         try {
             DynamicByteArray readData = new DynamicByteArray();
             while(true) {
