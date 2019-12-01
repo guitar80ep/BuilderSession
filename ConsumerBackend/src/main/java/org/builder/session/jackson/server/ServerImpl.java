@@ -4,6 +4,7 @@ import java.io.IOException;
 import java.util.Map;
 
 import org.build.session.jackson.proto.Resource;
+import org.builder.session.jackson.client.loadbalancing.ServiceRegistry;
 import org.builder.session.jackson.utils.HostnameUtils;
 import org.builder.session.jackson.workflow.utilize.Consumer;
 
@@ -29,7 +30,7 @@ public class ServerImpl implements Server {
 
     public ServerImpl (@NonNull final int port,
                        @NonNull final Map<Resource, Consumer> consumers,
-                       @NonNull final String serviceDiscoveryId) {
+                       @NonNull final ServiceRegistry registry) {
         Preconditions.checkArgument(port >= 0 && port < (Short.MAX_VALUE * 2),
                                     "Port must be within the range [0, 65535], but was " + port);
         this.host = HostnameUtils.resolveIpAddress();
@@ -37,7 +38,7 @@ public class ServerImpl implements Server {
         this.service = new ConsumerBackendService(this.host,
                                                   this.port,
                                                   consumers,
-                                                  serviceDiscoveryId);
+                                                  registry);
         server = ServerBuilder.forPort(port)
                               .addService(this.service)
                               .build();

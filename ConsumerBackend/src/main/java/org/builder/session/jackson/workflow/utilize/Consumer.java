@@ -5,6 +5,7 @@ import java.util.Set;
 
 import org.build.session.jackson.proto.Resource;
 import org.build.session.jackson.proto.Unit;
+import org.builder.session.jackson.client.loadbalancing.ServiceRegistry;
 import org.builder.session.jackson.system.SystemUtil;
 
 import com.google.common.collect.ImmutableMap;
@@ -30,7 +31,8 @@ public interface Consumer extends AutoCloseable {
      */
     public static Map<Resource, Consumer> buildDefaultConsumers(@NonNull Set<Resource> resources,
                                                                 @NonNull SystemUtil systemUtil,
-                                                                @NonNull PIDConfig pidConfig) {
+                                                                @NonNull PIDConfig pidConfig,
+                                                                @NonNull ServiceRegistry registry) {
         ImmutableMap.Builder<Resource, Consumer> builder = ImmutableMap.builder();
         for(Resource resource : resources) {
             switch (resource) {
@@ -44,7 +46,7 @@ public interface Consumer extends AutoCloseable {
                     builder.put(Resource.DISK, new DiskConsumer(systemUtil, pidConfig));
                     break;
                 case NETWORK:
-                    builder.put(Resource.NETWORK, new NetworkConsumer(systemUtil, pidConfig));
+                    builder.put(Resource.NETWORK, new NetworkConsumer(systemUtil, pidConfig, registry));
                     break;
                     default:
                         throw new IllegalArgumentException("Unrecognized resource type " + resource);

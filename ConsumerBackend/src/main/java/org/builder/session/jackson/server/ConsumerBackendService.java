@@ -22,7 +22,6 @@ import org.build.session.jackson.proto.UsageSpec;
 import org.builder.session.jackson.client.SimpleClient;
 import org.builder.session.jackson.client.consumer.ConsumerBackendClient;
 import org.builder.session.jackson.client.loadbalancing.ServiceRegistry;
-import org.builder.session.jackson.client.loadbalancing.ServiceRegistryImpl;
 import org.builder.session.jackson.client.wrapper.CachedClient;
 import org.builder.session.jackson.utils.JsonHelper;
 import org.builder.session.jackson.workflow.Workflow;
@@ -52,11 +51,9 @@ public final class ConsumerBackendService extends ConsumerBackendServiceGrpc.Con
     public ConsumerBackendService(@NonNull final String host,
                                   final int port,
                                   @NonNull final Map<Resource, Consumer> consumers,
-                                  @NonNull String serviceDiscoveryId) {
+                                  @NonNull ServiceRegistry registry) {
         this.host = new ServiceRegistry.Instance(host, port);
-        this.registry = CachedClient.wrap(new ServiceRegistryImpl(serviceDiscoveryId),
-                                          INSTANCE_DISCOVERY_PACE,
-                                          true);
+        this.registry = CachedClient.wrap(registry, INSTANCE_DISCOVERY_PACE, true);
         this.consumers = consumers;
         consumers.forEach((r, c) -> workflow.consume(c));
     }

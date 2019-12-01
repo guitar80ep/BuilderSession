@@ -13,6 +13,8 @@ import java.util.stream.Collectors;
 
 import org.apache.logging.log4j.Level;
 import org.build.session.jackson.proto.Resource;
+import org.builder.session.jackson.client.loadbalancing.ServiceRegistry;
+import org.builder.session.jackson.client.loadbalancing.ServiceRegistryImpl;
 import org.builder.session.jackson.server.Server;
 import org.builder.session.jackson.server.ServerImpl;
 import org.builder.session.jackson.system.Profiler;
@@ -45,9 +47,11 @@ public class Application
         final String dnsName = parseServiceDiscoveryId(args);
         final SystemUtil systemUtil = parseProfiling(args);
         final Set<Resource> resources = parseConsumerConfig(args);
+        final ServiceRegistry registry = new ServiceRegistryImpl(dnsName);
         final Map<Resource, Consumer> consumers = Consumer.buildDefaultConsumers(resources,
                                                                                  systemUtil,
-                                                                                 pidConfig);
+                                                                                 pidConfig,
+                                                                                 registry);
 
         log.info("Starting a server on port {}, with consumers {}, with PID {}, and DNS \"{}\".",
                  new Object[]{ port,
@@ -55,7 +59,7 @@ public class Application
                                pidConfig,
                                dnsName });
 
-        try (Server server = new ServerImpl(port, consumers, dnsName);
+        try (Server server = new ServerImpl(port, consumers, registry);
              BufferedReader reader = new BufferedReader(new InputStreamReader(System.in))) {
             server.start();
             while(!shouldStop(reader)) {

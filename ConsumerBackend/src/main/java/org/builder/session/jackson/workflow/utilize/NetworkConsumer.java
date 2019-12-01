@@ -1,16 +1,20 @@
 package org.builder.session.jackson.workflow.utilize;
 
-import java.net.InetAddress;
+import java.io.IOException;
+import java.io.InputStream;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.time.Duration;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Optional;
+import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import org.build.session.jackson.proto.Unit;
+import org.builder.session.jackson.client.loadbalancing.ServiceRegistry;
 import org.builder.session.jackson.exception.ConsumerInternalException;
 import org.builder.session.jackson.system.DigitalUnit;
 import org.builder.session.jackson.system.SystemUtil;
@@ -26,7 +30,9 @@ import lombok.extern.slf4j.Slf4j;
 public class NetworkConsumer extends AbstractPidConsumer {
 
     private static final long DEFAULT_INITIAL_TARGET = 1024;
-    private static final Duration TRANSMIT_PACE = Duration.ofMillis(50);
+    private static final Duration TRANSMIT_PACE = Duration.ofMillis(500);
+    private static final Duration SEEK_CONNECTION_PACE = Duration.ofMinutes(1);
+    private static final int LISTENER_PORT = 32316;
 
     @Getter
     private final String name = "NetworkConsumer";
@@ -35,68 +41,131 @@ public class NetworkConsumer extends AbstractPidConsumer {
     @NonNull
     private final ServerSocket server;
     @NonNull
-    private final Socket writerSocket;
+    private final ExecutorService executor;
     @NonNull
-    private final Socket readerSocket;
-    @NonNull
-    private final ScheduledExecutorService executor;
+    private final ServiceRegistry registry;
     @NonNull
     private final AtomicInteger scaleAdjustment = new AtomicInteger(0);
 
-    public NetworkConsumer (@NonNull final SystemUtil system, @NonNull final PIDConfig pidConfig) {
+    public NetworkConsumer (@NonNull final SystemUtil system,
+                            @NonNull final PIDConfig pidConfig,
+                            @NonNull final  ServiceRegistry registry) {
         this(DigitalUnit.BYTES_PER_SECOND
                      .from(DEFAULT_INITIAL_TARGET,
                            DigitalUnit.KILOBYTES_PER_SECOND),
              system,
-             pidConfig);
+             pidConfig,
+             registry);
     }
 
-    public NetworkConsumer (final long targetRateInBytes, @NonNull final SystemUtil system, @NonNull final PIDConfig pidConfig) {
+    public NetworkConsumer (final long targetRateInBytes,
+                            @NonNull final SystemUtil system,
+                            @NonNull final PIDConfig pidConfig,
+                            @NonNull final  ServiceRegistry registry) {
         super(pidConfig);
         this.system = system;
+        this.registry = registry;
         this.setTarget(targetRateInBytes, Unit.BYTES_PER_SECOND);
 
-        //Setup Web Socket connection with loopback.
-        int dynamicPort = 0;
+
         try {
-            this.executor = Executors.newScheduledThreadPool(4);
-            this.server = new ServerSocket(0);
-            Future<Socket> future = executor.submit(() -> this.server.accept());
-            Thread.sleep(TRANSMIT_PACE.toMillis());
-            dynamicPort = server.getLocalPort();
-            this.readerSocket = new Socket(InetAddress.getByName(null).getHostName(), dynamicPort);
-            this.writerSocket = future.get();
-        } catch (Throwable t) {
-            throw new ConsumerInternalException("Failed to start NetworkConsumer on port: " + dynamicPort, t);
-        }
+            this.executor = Executors.newCachedThreadPool();
 
-        //Start Writer
-        DynamicByteArray writeData = new DynamicByteArray();
-        this.executor.scheduleAtFixedRate(() -> {
-            try {
-                int dataSize = scaleAdjustment.get();
-                log.debug("Writing {} bytes to socket.", dataSize);
-                writeData.setSize(dataSize > 0 ? dataSize : 1);
-                writeData.write(writerSocket.getOutputStream());
-            } catch (Throwable t) {
-                log.error("Encountered error in NetworkConsumer Writer.", t);
-            }
-        }, 0, TRANSMIT_PACE.toMillis(), TimeUnit.MILLISECONDS);
-
-        //Start Reader
-        DynamicByteArray readData = new DynamicByteArray();
-        this.executor.scheduleAtFixedRate(() -> {
-            try {
-                while (this.readerSocket.getInputStream().available() > 0) {
-                    int remaining = this.readerSocket.getInputStream().available();
-                    log.debug("Reading {} bytes from socket.", remaining);
-                    readData.setSize(remaining <= 0 ? 1 : remaining);
-                    readData.read(readerSocket.getInputStream(), remaining);
+            // Setup connection handling to respond to others.
+            this.server = new ServerSocket(LISTENER_PORT);
+            this.executor.submit(() -> {
+                while (true) {
+                    try {
+                        Socket newConnection = server.accept();
+                        this.executor.submit(() -> runWriter(newConnection));
+                    } catch (Throwable t) {
+                        log.error("Caught error in NetworkConsumer connection handler thread.", t);
+                    }
                 }
-            } catch (Throwable t) {
-                log.error("Encountered error in NetworkConsumer Reader.", t);
+            });
+
+            // Setup connections to push data to others.
+            this.executor.submit(() -> {
+                Map<ServiceRegistry.Instance, Future> connectionsMap = new HashMap<>();
+                while (true) {
+                    try {
+                        // Constantly try to find new hosts to talk to...
+                        for(ServiceRegistry.Instance i : this.registry.resolveHosts()) {
+                            Optional<Future> future = Optional.ofNullable(connectionsMap.get(i));
+                            if(future.isPresent()) {
+                                Future f = future.get();
+                                if(f.isDone() || f.isCancelled()) {
+                                    connectionsMap.remove(i);
+                                    future = Optional.empty();
+                                }
+                            }
+
+                            if(!future.isPresent()) {
+                                Socket newConnection = new Socket(i.getAddress(), i.getPort());
+                                Future newFuture = this.executor.submit(() -> runReader(newConnection));
+                                connectionsMap.put(i, newFuture);
+                            }
+                        }
+                        Thread.sleep(SEEK_CONNECTION_PACE.toMillis());
+                    } catch (Throwable t) {
+                        log.error("Caught error in NetworkConsumer connection handler thread.", t);
+                    }
+                }
+            });
+        } catch (Throwable t) {
+            throw new ConsumerInternalException("Failed to start NetworkConsumer on port: " + LISTENER_PORT, t);
+        }
+    }
+
+    /**
+     * Runs a writer that constantly writes data out to a listener.
+     */
+    private void runWriter(Socket socket) {
+        try {
+            DynamicByteArray writeData = new DynamicByteArray();
+            while (true) {
+                Thread.sleep(TRANSMIT_PACE.toMillis());
+                int dataSize = scaleAdjustment.get();
+                dataSize = dataSize > 0 ? dataSize : 1;
+                log.debug("Writing {} bytes to socket.", dataSize);
+                writeData.setSize(dataSize);
+                writeData.write(socket.getOutputStream());
             }
-        }, 0, TRANSMIT_PACE.toMillis(), TimeUnit.MILLISECONDS);
+        } catch (Throwable t) {
+            log.error("Encountered error in NetworkConsumer Writer. Closing connection.", t);
+        } finally {
+            try {
+                socket.close();
+            } catch (IOException e) {
+                log.error("Failed to close socket on NetworkConsumer Writer.", e);
+            }
+        }
+    }
+
+    /**
+     * Runs a reader that constantly reads data out from a series of listeners or skips
+     * the data if necessary to maintain consumption goals.
+     */
+    private void runReader(Socket socket) {
+        try {
+            DynamicByteArray readData = new DynamicByteArray();
+            while(true) {
+                Thread.sleep(TRANSMIT_PACE.toMillis());
+                InputStream stream = socket.getInputStream();
+                int available = stream.available();
+                log.debug("Reading {} bytes from socket.", available);
+                readData.setSize(available);
+                readData.read(stream, available);
+            }
+        } catch (Throwable t) {
+            log.error("Encountered error in NetworkConsumer Reader.", t);
+        } finally {
+            try {
+                socket.close();
+            } catch (IOException e) {
+                log.error("Failed to close socket on NetworkConsumer Reader.", e);
+            }
+        }
     }
 
     @Override
@@ -157,8 +226,6 @@ public class NetworkConsumer extends AbstractPidConsumer {
     public void close () {
         try {
             executor.shutdown();
-            writerSocket.close();
-            readerSocket.close();
             server.close();
         } catch (Throwable t) {
             throw new RuntimeException("Failed to close NetworkConsumer.", t);
