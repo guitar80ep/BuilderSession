@@ -32,9 +32,8 @@ public class StatTracker {
     }
 
     public Optional<Double> getLatestTimeBetweenStats(TimeUnit unit) {
-        double nanosConversion = (double)unit.toNanos(1);
         return previous.map(prev -> Duration.between(prev.getTimestamp(), latest.getTimestamp()))
-                       .map(d -> (double)d.toNanos() / nanosConversion);
+                       .map(d -> (double)unit.convert(d.toMillis(), TimeUnit.MILLISECONDS));
     }
 
     /**
@@ -44,9 +43,7 @@ public class StatTracker {
     public Optional<Double> getLatestRate(TimeUnit unit) {
         Optional<Double> change = getLatestChange();
         Optional<Double> time = getLatestTimeBetweenStats(unit);
-        return change.isPresent() && time.isPresent() ?
-               Optional.of(change.get() / time.get()):
-               Optional.empty();
+        return time.map(t -> change.map(v -> v / t).orElse(null));
     }
 
     public void addStat(double value) {
