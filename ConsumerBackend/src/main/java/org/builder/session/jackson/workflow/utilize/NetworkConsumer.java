@@ -102,8 +102,7 @@ public class NetworkConsumer extends AbstractPidConsumer {
                             }
 
                             if(!future.isPresent()) {
-                                Socket newConnection = new Socket(i.getAddress(), LISTENER_PORT);
-                                Future newFuture = this.executor.submit(() -> runReader(newConnection));
+                                Future newFuture = this.executor.submit(() -> runReader(i));
                                 connectionsMap.put(i, newFuture);
                             }
                         }
@@ -148,9 +147,18 @@ public class NetworkConsumer extends AbstractPidConsumer {
      * Runs a reader that constantly reads data out from a series of listeners or skips
      * the data if necessary to maintain consumption goals.
      */
-    private void runReader(Socket socket) {
-        log.info("Connected new reader at socket: " + socket);
+    private void runReader(ServiceRegistry.Instance instance) {
         try {
+            log.info("Attempting to connect NetworkConsumer reader. Found instance {} with substitute port {}.",
+                     instance, LISTENER_PORT);
+            Thread.sleep(TRANSMIT_PACE.toMillis()); // Wait extra to ensure the reader for this registry has come up.
+        } catch (Throwable t) {
+            log.error("Encountered error while waiting to start reader.", t);
+        }
+
+        //Start reader connection...
+        try (Socket socket = new Socket(instance.getAddress(), LISTENER_PORT)) {
+            log.info("Connected new reader at socket: " + socket);
             DynamicByteArray readData = new DynamicByteArray();
             while(true) {
                 InputStream stream = socket.getInputStream();
@@ -163,12 +171,6 @@ public class NetworkConsumer extends AbstractPidConsumer {
             }
         } catch (Throwable t) {
             log.error("Encountered error in NetworkConsumer Reader.", t);
-        } finally {
-            try {
-                socket.close();
-            } catch (IOException e) {
-                log.error("Failed to close socket on NetworkConsumer Reader.", e);
-            }
         }
     }
 
