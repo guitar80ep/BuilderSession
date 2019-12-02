@@ -1,0 +1,42 @@
+###
+EC2 Instance Filtering:
+
+A query that can be used to perform near real-time analysis of the stats
+for containers on a particular instance. This can also be further narrowed
+by TaskId or ContainerName.
+###
+
+fields @timestamp, EC2InstanceId
+| filter Type = "Container"
+     and EC2InstanceId = "i-0ff43104167024ee8"
+| limit 20
+
+
+
+
+###
+Group By Container Query for CPU Data:
+
+A query that can gather the maximum CPU usage for a given ContainerName
+over a specified time frame.
+###
+
+fields @timestamp, Type, ContainerName, CpuUtilized
+| filter Type = "Container"
+| stats max(CpuUtilized) by ContainerName
+
+
+
+
+###
+Specific Container Query for CpuData:
+
+A query that can create graphical views of the CPU stats for
+a ContainerName over time since the real-time metric isn't granular
+enough.
+###
+
+fields @timestamp, Type, ContainerName, CpuUtilized
+| filter Type = "Container"
+     and ContainerName = "ConsumerBackend"
+| stats max(CpuUtilized) by bin(10m)
