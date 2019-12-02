@@ -44,10 +44,10 @@ public class Application
                                             "[--port, --pidConfig, --serviceDiscoveryId].");
         final int port = parsePort(args);
         final PIDConfig pidConfig = parsePidConfig(args);
-        final String dnsName = parseServiceDiscoveryId(args);
+        final String serviceDiscoveryId = parseServiceDiscoveryId(args);
         final SystemUtil systemUtil = parseProfiling(args);
         final Set<Resource> resources = parseConsumerConfig(args);
-        final ServiceRegistry registry = new ServiceRegistryImpl(dnsName);
+        final ServiceRegistry registry = new ServiceRegistryImpl(serviceDiscoveryId);
         final Map<Resource, Consumer> consumers = Consumer.buildDefaultConsumers(resources,
                                                                                  systemUtil,
                                                                                  pidConfig,
@@ -57,7 +57,7 @@ public class Application
                  new Object[]{ port,
                                resources,
                                pidConfig,
-                               dnsName });
+                               serviceDiscoveryId });
 
         try (Server server = new ServerImpl(port, consumers, registry);
              BufferedReader reader = new BufferedReader(new InputStreamReader(System.in))) {
