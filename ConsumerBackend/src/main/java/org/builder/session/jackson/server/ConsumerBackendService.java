@@ -61,21 +61,21 @@ public final class ConsumerBackendService extends ConsumerBackendServiceGrpc.Con
     public void consume (ConsumeRequest request, StreamObserver<ConsumeResponse> responseObserver) {
 
         ErrorHandler.ResultOrError<ConsumeResponse> response = ErrorHandler.wrap((req, observer) -> {
-            boolean hasSpecifiedInstance = req.getHost() == null;
+            boolean hasSpecifiedInstance = req.getHost() != null;
             Optional<ServiceRegistry.Instance> selected = Optional.ofNullable(
                     hasSpecifiedInstance
-                    ? new ServiceRegistry.Instance(req.getHost(), request.getPort())
+                    ? new ServiceRegistry.Instance(req.getHost(), req.getPort())
                     : null);
             List<ServiceRegistry.Instance> hosts = CandidateHandler.resolve(req.getCandidate(),
                                                                             host,
                                                                             selected,
                                                                             registry);
             ConsumeRequest.Builder proxyRequest = ConsumeRequest.newBuilder()
-                                                                .addAllUsage(request.getUsageList())
+                                                                .addAllUsage(req.getUsageList())
                                                                 // Convert to call a single SELF since it
                                                                 // will end up that way regardless.
                                                                 .setCandidate(Candidate.SELF);
-            
+
             return hosts.parallelStream()
                         .map(h -> consume(h, proxyRequest.build()))
                         .unordered()

@@ -26,10 +26,10 @@
     <%
         ApplicationContext ac = RequestContextUtils.findWebApplicationContext(request);
         //This signifies a request.
-        ConsumeResponse result = null;
-        List<InstanceSummary> instances = null;
+        ConsumeResponse result;
+        List<InstanceSummary> instances;
         try (ConsumerBackendClient client = (ConsumerBackendClient) ac.getBean("backendClient")) {
-            RequestUtils.request(request, client);
+            result = RequestUtils.request(request, client).orElse(null);
             instances = RequestUtils.describe(client);
             instances = RequestUtils.sort(instances);
         }
@@ -57,16 +57,11 @@
         </p>
         <br/>
 
-        <p>
-            <%= result != null ? "Result: " + JsonHelper.format(result.getInstances(0)).trim()
-                               : "No Result." %>
-        </p>
-        <br/>
-
         <div class="tab">
             <button id="SpecificButton" class="tabbutton" onclick="changeTab(event, 'Specific')">Specific</button>
             <button id="AllButton" class="tabbutton" onclick="changeTab(event, 'All')">All</button>
             <button id="RandomButton" class="tabbutton" onclick="changeTab(event, 'Random')">Random</button>
+            <button id="PreviousResultButton" class="tabbutton" onclick="changeTab(event, 'PreviousResult')">Previous Result</button>
         </div>
 
         <div id="Specific" class="tabcontent">
@@ -91,6 +86,11 @@
             <form action="" method="post">
                 <consumer:HostView instance="<%= randomInstance %>" candidate="<%= Candidate.SPECIFIC %>"/>
             </form>
+        </div>
+
+        <div id="PreviousResult" class="tabcontent">
+            <p>The results from the previous call (if applicable) were:</p>
+            <%= result == null ? "N/A" : JsonHelper.format(result) %>
         </div>
 
         <script>
