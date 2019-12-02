@@ -11,7 +11,7 @@ Parameters:
     Description: Semi-Optional. The amount of CPU for the entire Task.
   TaskMemory:
     Type: Number
-    Default: 4096
+    Default: 8192
     Description: Semi-Optional. The amount of Memory for the entire Task.
   TaskNetworkMode:
     Type: String
@@ -45,11 +45,11 @@ Parameters:
       container.
   BackendMemory:
     Type: Number
-    Default: 3072
+    Default: 7168
     Description: Optional. The amount of Memory in MB for the Backend container.
   BackendHeap:
     Type: Number
-    Default: 2972
+    Default: 7068
     Description: Required. The amount of heap Memory in MB for the
       backend container.
   BackendPidConfig:
