@@ -8,3 +8,8 @@ aws ecs update-cluster-settings --cluster <YOUR_CLUSTER> --settings name=contain
 
 # Enable Container Insights for all new Cluster created by a specific user.
 aws ecs put-account-setting --name containerInsights --value enabled --principal-arn <YOUR_IAM_USER_ARN>
+
+# Additionally, you can setup Instance-Level Container Insights via Clouformation
+# at the link below. This gives more context for your instance metrics as they relate
+# to ECS.
+https://docs.aws.amazon.com/AmazonCloudWatch/latest/monitoring/deploy-container-insights-ECS-instancelevel.html#deploy-container-insights-ECS-instancelevel-quickstart
