@@ -175,6 +175,7 @@ Resources:
     Type: AWS::ECS::TaskDefinition
     Properties:
       Family: !Ref 'ServiceName'
+      RequiresCompatibilities: [ !Ref 'LaunchType' ]
       Cpu:
         Fn::If:
           - 'HasTaskCpu'
@@ -529,7 +530,7 @@ Resources:
         - !Ref PublicSubnetOne
         - !Ref PublicSubnetTwo
       LaunchConfigurationName: !Ref 'ContainerInstances'
-      MinSize: '1'
+      MinSize: !Ref 'DesiredInstances'
       MaxSize: !Ref 'DesiredInstances'
       DesiredCapacity: !Ref 'DesiredInstances'
     CreationPolicy:
