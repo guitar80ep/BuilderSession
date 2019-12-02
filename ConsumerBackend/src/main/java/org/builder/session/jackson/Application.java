@@ -161,6 +161,11 @@ public class Application
               .addConsoleAppender("ConsoleAppender", "MainLayout")
               .addFileAppender("FileAppender", "logs/application.log", "MainLayout")
               .addRootLogger(Level.WARN)
+              .addLogger("org.builder.session.jackson.server",
+                         Level.WARN,
+                         false,
+                         "ConsoleAppender",
+                         "FileAppender")
               .addLogger("org.builder.session", Level.INFO,
                          false,
                          "ConsoleAppender",
@@ -180,18 +185,8 @@ public class Application
                          false,
                          "ConsoleAppender",
                          "FileAppender")
-              .addLogger("org.builder.session.jackson.workflow.utilize.AbstractPidConsumer",
-                         Level.DEBUG,
-                         false,
-                         "ConsoleAppender",
-                         "FileAppender")
-              .addLogger("org.builder.session.jackson.workflow.utilize.NetworkConsumer",
-                         Level.DEBUG,
-                         false,
-                         "ConsoleAppender",
-                         "FileAppender")
-              .addLogger("org.builder.session.jackson.utils.RateTracker",
-                         Level.DEBUG,
+              .addLogger("org.builder.session.jackson.request",
+                         Level.INFO,
                          false,
                          "ConsoleAppender",
                          "FileAppender")

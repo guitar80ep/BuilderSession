@@ -57,28 +57,16 @@ Parameters:
     Default: "[500,0.100,0.100,0.005,0.900]"
     Description: Required. The PID config specified as [PaceInMillis,P,I,D,Decay]
       (ex. [5,1.0,2.0,3.0,0.95]) used to stabilize resource consumption. If you
-      don't know much about PID, leave these as-is.
+      haven't spent time tuning this before, consider leaving this at defaults.
   BackendConsumerConfig:
     Type: String
-    Default: "[CPU,Memory,Disk,Network]"
+    Default: "[CPU,Memory]"
     Description: Required. The Consumer config specified as a list of resource types
       to consume. Note that Network consumption only works in BRIDGE mode, due to the
-      way the ECS Agent handles network stats.
-  Path:
-    Type: String
-    Default: "*"
-    Description: Required. A path on the public load balancer that this service
-      should be connected to. Use * to send all load balancer traffic to this
-      service.
-  Priority:
-    Type: Number
-    Default: 1
-    Description: Required. The priority for the routing rule added to the load
-      balancer. This only applies if your have multiple services which have been
-      assigned to different paths on the load balancer.
+      way the ECS Agent handles network stats. (Ex. [CPU,Memory,Network,Disk] )
   ExecutionRole:
     Type: String
-    Default: ""
+    Default: "???"
     Description: Required. An IAM role to give ECS to call APIs on your behalf
       when starting containers such as pulling images from ECR.
   EC2KeyPair:
@@ -86,12 +74,12 @@ Parameters:
     Default: ""
     Description: Optional. A key pair to attach to EC2 instances launched
       in the Cluster.
-  DesiredCapacity:
+  DesiredInstances:
     Type: Number
     Default: 3
     Description: Semi-Optional. Number of EC2 instances to launch in your ECS
       cluster if you chose EC2 Launch Type.
-  DesiredCount:
+  DesiredTasks:
     Type: Number
     Default: 0
     Description: Optional. Number of tasks to launch in your ECS cluster. Default
@@ -207,9 +195,9 @@ Resources:
             Command:
               - "CMD-SHELL"
               - !Join [ " ", [ "java -cp /usr/local/ConsumerBackend/ConsumerBackend.jar org.builder.session.jackson.health.Healthcheck --port", !Ref 'BackendPort'] ]
-            Interval: 5
-            Retries: 4
-            StartPeriod: 10
+            Interval: 10
+            Retries: 3
+            StartPeriod: 5
             Timeout: 5
           Cpu:
             Fn::If:
@@ -303,7 +291,7 @@ Resources:
       DeploymentConfiguration:
         MaximumPercent: !Ref 'MaxHealthyPercent'
         MinimumHealthyPercent: !Ref 'MinHealthyPercent'
-      DesiredCount: !Ref 'DesiredCount'
+      DesiredCount: !Ref 'DesiredTasks'
       LaunchType: !Ref 'LaunchType'
       TaskDefinition: !Ref 'TaskDefinition'
       NetworkConfiguration:
@@ -486,9 +474,9 @@ Resources:
           Type: 'forward'
       Conditions:
         - Field: path-pattern
-          Values: [!Ref 'Path']
+          Values: "*"
       ListenerArn: !Ref 'PublicLoadBalancerListener'
-      Priority: !Ref 'Priority'
+      Priority: 1
 
   ################################
   #                              #
@@ -535,8 +523,8 @@ Resources:
         - !Ref PublicSubnetTwo
       LaunchConfigurationName: !Ref 'ContainerInstances'
       MinSize: '1'
-      MaxSize: !Ref 'DesiredCapacity'
-      DesiredCapacity: !Ref 'DesiredCapacity'
+      MaxSize: !Ref 'DesiredInstances'
+      DesiredCapacity: !Ref 'DesiredInstances'
     CreationPolicy:
       ResourceSignal:
         Timeout: PT15M

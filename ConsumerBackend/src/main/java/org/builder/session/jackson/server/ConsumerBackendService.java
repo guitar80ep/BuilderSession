@@ -5,16 +5,14 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.UUID;
-import java.util.concurrent.ThreadLocalRandom;
 import java.util.stream.Collectors;
 
 import org.build.session.jackson.proto.Candidate;
 import org.build.session.jackson.proto.ConsumeRequest;
 import org.build.session.jackson.proto.ConsumeResponse;
 import org.build.session.jackson.proto.ConsumerBackendServiceGrpc;
-import org.build.session.jackson.proto.Error;
-import org.build.session.jackson.proto.ErrorCode;
+import org.build.session.jackson.proto.DescribeEndpointRequest;
+import org.build.session.jackson.proto.DescribeEndpointResponse;
 import org.build.session.jackson.proto.InstanceSummary;
 import org.build.session.jackson.proto.Resource;
 import org.build.session.jackson.proto.Unit;
@@ -23,7 +21,8 @@ import org.builder.session.jackson.client.SimpleClient;
 import org.builder.session.jackson.client.consumer.ConsumerBackendClient;
 import org.builder.session.jackson.client.loadbalancing.ServiceRegistry;
 import org.builder.session.jackson.client.wrapper.CachedClient;
-import org.builder.session.jackson.utils.JsonHelper;
+import org.builder.session.jackson.request.CandidateHandler;
+import org.builder.session.jackson.request.ErrorHandler;
 import org.builder.session.jackson.workflow.Workflow;
 import org.builder.session.jackson.workflow.utilize.Consumer;
 
@@ -60,69 +59,65 @@ public final class ConsumerBackendService extends ConsumerBackendServiceGrpc.Con
 
     @Override
     public void consume (ConsumeRequest request, StreamObserver<ConsumeResponse> responseObserver) {
-        UUID requestId = UUID.randomUUID();
-        try {
-            log.info("Change (id: {}) request received {}", requestId, JsonHelper.toSingleLine(request));
-            Candidate candidate = request.getCandidate();
-            switch (candidate) {
-                case SELF:
-                    responseObserver.onNext(consume(this.host, request, requestId));
-                    break;
-                case RANDOM:
-                    List<ServiceRegistry.Instance> hostsForRandom = registry.call();
-                    int hostIndex = ThreadLocalRandom.current().nextInt(hostsForRandom.size());
-                    ServiceRegistry.Instance randomInstance = hostsForRandom.get(hostIndex);
-                    responseObserver.onNext(consume(randomInstance, request, requestId));
-                    break;
-                case SPECIFIC:
-                    ServiceRegistry.Instance selectedInstance = new ServiceRegistry.Instance(request.getHost(),
-                                                                                             request.getPort());
-                    List<ServiceRegistry.Instance> hostsForValidation = registry.call();
-                    Preconditions.checkArgument(hostsForValidation.stream().anyMatch(i -> i.equals(selectedInstance)),
-                                                "Expected at least one host to match " + selectedInstance
-                                                        + ", but none did " + hostsForValidation);
-                    responseObserver.onNext(consume(selectedInstance, request, requestId));
-                    break;
-                case ALL:
-                    List<ServiceRegistry.Instance> hosts = registry.call();
-                    List<ConsumeResponse> responses = hosts.parallelStream()
-                                                           .map(h -> consume(h, ConsumeRequest.newBuilder()
-                                                                                              .addAllUsage(request.getUsageList())
-                                                                                              //Convert to call a single actor instead of ALL.
-                                                                                              .setCandidate(Candidate.SELF)
-                                                                                              .build(),
-                                                                             requestId))
-                                                           .collect(Collectors.toList());
 
-                    log.debug("Aggregating calls from ALL hosts: {}", responses);
-                    //Aggregate the results from all callers...
-                    ConsumeResponse.Builder builder = ConsumeResponse.newBuilder();
-                    responses.forEach(c -> {
-                        builder.addAllInstances(c.getInstancesList());
-                        builder.addAllError(c.getErrorList());
-                    });
-                    responseObserver.onNext(builder.build());
-                    break;
-                    default:
-                        throw new IllegalArgumentException("An unexpected candidate type "
-                                                                   + request.getCandidate()
-                                                                   + " was specified.");
-            }
-        } catch (IllegalArgumentException e) {
-            log.error("Failed to execute consume request.", e);
-            responseObserver.onNext(onSingleFailure(ErrorCode.INVALID_PARAMETER, e.getClass().getSimpleName() + ": " + e.getMessage()));
-        } catch (Throwable t) {
-            log.error("Failed to execute consume request.", t);
-            responseObserver.onNext(onSingleFailure(ErrorCode.UNKNOWN, t.getClass().getSimpleName() + ": " + t.getMessage()));
+        ErrorHandler.ResultOrError<ConsumeResponse> response = ErrorHandler.wrap((req, observer) -> {
+            boolean hasSpecifiedInstance = req.getHost() == null;
+            Optional<ServiceRegistry.Instance> selected = Optional.ofNullable(
+                    hasSpecifiedInstance
+                    ? new ServiceRegistry.Instance(req.getHost(), request.getPort())
+                    : null);
+            List<ServiceRegistry.Instance> hosts = CandidateHandler.resolve(req.getCandidate(),
+                                                                            host,
+                                                                            selected,
+                                                                            registry);
+            ConsumeRequest.Builder proxyRequest = ConsumeRequest.newBuilder()
+                                                                .addAllUsage(request.getUsageList())
+                                                                // Convert to call a single SELF since it
+                                                                // will end up that way regardless.
+                                                                .setCandidate(Candidate.SELF);
+
+            return hosts.parallelStream()
+                        .map(h -> consume(h, proxyRequest.build()))
+                        .collect(Collectors.reducing(ConsumerBackendService::merge))
+                        .orElseThrow(() -> new IllegalStateException("No hosts found in merge."));
+        }, request, log);
+
+        if(response.wasSuccessful()) {
+            responseObserver.onNext(response.getResult());
+        } else {
+            responseObserver.onNext(ConsumeResponse.newBuilder()
+                                                   .addInstances(this.getInstanceSummary(new ArrayList<>()))
+                                                   .addError(response.getError())
+                                                   .build());
         }
 
+
+
+
         responseObserver.onCompleted();
+    }
+
+    private static ConsumeResponse merge(@NonNull ConsumeResponse a, @NonNull ConsumeResponse b) {
+        return ConsumeResponse.newBuilder()
+                              .addAllInstances(a.getInstancesList())
+                              .addAllInstances(b.getInstancesList())
+                              .addAllError(a.getErrorList())
+                              .addAllError(b.getErrorList())
+                              .build();
+    }
+
+
+
+    @Override
+    public void describeEndpoint (DescribeEndpointRequest request,
+                                  StreamObserver<DescribeEndpointResponse> responseObserver) {
+
     }
 
     /**
      * Runs consume method for self if necessary or passes to other host.
      */
-    protected ConsumeResponse consume(ServiceRegistry.Instance targetHost, ConsumeRequest request, UUID requestId) {
+    protected ConsumeResponse consume(ServiceRegistry.Instance targetHost, ConsumeRequest request) {
         boolean isThisHostBeingInvoked = this.host.equals(targetHost);
         List<UsageSpec> usages = Optional.ofNullable(request.getUsageList())
                                          .orElse(new ArrayList<>());
@@ -136,38 +131,16 @@ public final class ConsumerBackendService extends ConsumerBackendServiceGrpc.Con
                         .setTarget(usage.getTarget(), usage.getUnit());
             }
 
-            ConsumeResponse response = onSingleSuccess(usages);
-            log.info("Change (id: " + requestId + ") request {} returned {}",
-                     JsonHelper.toSingleLine(request),
-                     JsonHelper.toSingleLine(response));
-            return response;
+            return ConsumeResponse.newBuilder()
+                                  .addInstances(this.getInstanceSummary(usages))
+                                  .build();
         } else {
             log.info("Propagating calls on to neighboring host {}", targetHost);
             try (ConsumerBackendClient client = new ConsumerBackendClient(targetHost.getAddress(),
                                                                           targetHost.getPort())) {
-                ConsumeResponse response = client.call(request);
-                log.info("Change (id: " + requestId + ") request {} returned {}",
-                         JsonHelper.toSingleLine(request),
-                         JsonHelper.toSingleLine(response));
-                return response;
+                return client.call(request);
             }
         }
-    }
-
-    protected ConsumeResponse onSingleSuccess(List<UsageSpec> usages) {
-        return ConsumeResponse.newBuilder()
-                              .addInstances(this.getInstanceSummary(usages))
-                              .build();
-    }
-
-    protected ConsumeResponse onSingleFailure(ErrorCode error, String message) {
-        return ConsumeResponse.newBuilder()
-                              .addInstances(this.getInstanceSummary(new ArrayList<>()))
-                              .addError(Error.newBuilder()
-                                             .setType(error)
-                                             .setMessage(message)
-                                             .build())
-                              .build();
     }
 
     protected InstanceSummary getInstanceSummary(List<UsageSpec> usages) {

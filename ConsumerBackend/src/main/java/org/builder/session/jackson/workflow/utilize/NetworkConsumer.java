@@ -72,7 +72,7 @@ public class NetworkConsumer extends AbstractPidConsumer {
             this.executor = Executors.newCachedThreadPool();
 
             // Setup connection handling to respond to others.
-            this.server = new ServerSocket(LISTENER_PORT);
+            this.server = new ServerSocket(LISTENER_PORT, 100);
             this.executor.submit(() -> {
                 while (true) {
                     try {

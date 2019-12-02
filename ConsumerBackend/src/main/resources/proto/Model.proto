@@ -14,6 +14,13 @@ service ConsumerBackendService {
     consumption a node will perform.
     */
     rpc Consume(ConsumeRequest) returns (ConsumeResponse);
+
+
+    /*
+    An API that allows a user to get the endpoint for a
+    particular consumer to interact with it directly.
+    */
+    rpc DescribeEndpoint(DescribeEndpointRequest) returns (DescribeEndpointResponse);
 }
 
 
@@ -27,6 +34,25 @@ message ConsumeRequest {
 message ConsumeResponse {
     repeated Error error = 1;
     repeated InstanceSummary instances = 2;
+}
+
+message DescribeEndpointRequest {
+    Candidate candidate = 1; // At the moment, only SELF is supported.
+}
+
+message DescribeEndpointResponse {
+    repeated Error error = 1;
+    repeated ConsumerEndpoint endpoint = 2;
+}
+
+message ConsumerEndpoint {
+    Resource resource = 1;
+    Endpoint endpoint = 2;
+}
+
+message Endpoint {
+    string host = 2;
+    int32 port = 3;
 }
 
 /*
@@ -105,4 +131,7 @@ An error code for when things go wrong.
 enum ErrorCode {
     UNKNOWN = 0;
     INVALID_PARAMETER = 1;
+    CLIENT_FAILURE = 2;
+    DEPENDENCY_FAILURE = 3;
+    INTERNAL_FAILURE = 4;
 }
