@@ -8,7 +8,10 @@ import org.build.session.jackson.proto.ErrorCode;
 import org.builder.session.jackson.exception.ConsumerClientException;
 import org.builder.session.jackson.exception.ConsumerDependencyException;
 import org.builder.session.jackson.exception.ConsumerInternalException;
+import org.builder.session.jackson.utils.JsonHelper;
 import org.slf4j.Logger;
+
+import com.google.protobuf.Message;
 
 import lombok.AccessLevel;
 import lombok.Data;
@@ -21,24 +24,28 @@ import lombok.ToString;
 @NoArgsConstructor(access = AccessLevel.NONE)
 public final class ErrorHandler {
 
-    public static <R, T> ResultOrError<T> wrap(@NonNull final ApiCall<R, T> call,
-                                               @NonNull R request,
-                                               @NonNull final Logger log) {
+    public static <R extends Message, T extends Message> ResultOrError<T> wrap(@NonNull final ApiCall<R, T> call,
+                                                               @NonNull R request,
+                                                               @NonNull final Logger log) {
         String requestType = request.getClass().getSimpleName();
         String requestId = UUID.randomUUID().toString();
+        String requestAsJson = "";
         try {
+            requestAsJson = JsonHelper.toSingleLine(request);
             log.trace("Initiating {} request (id: {}) {}",
-                     new Object[] { requestType, requestId, request });
+                     new Object[] { requestType, requestId, requestAsJson });
             ResultOrError<T> result = ResultOrError.result(call.call(request, requestId));
-            log.info("Handled {} request (id: {}) {} returned {}",
-                     new Object[] { requestType, requestId, request, result.getResult() });
+            log.info("Handled {} request (id: {}) returned {}",
+                     new Object[] { requestType, requestId, JsonHelper.toSingleLine(result.getResult()) });
             return result;
         } catch (Throwable ex) {
             log.error("Failed {} request (id: {}) {}. Due to: {}",
-                      new Object[] { requestType, requestId, request, ex });
+                      new Object[] { requestType, requestId, requestAsJson, ex });
             return ResultOrError.error(ex);
         }
     }
+
+
 
 
 
