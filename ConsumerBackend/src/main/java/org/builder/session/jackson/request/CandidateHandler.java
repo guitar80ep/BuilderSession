@@ -8,7 +8,6 @@ import org.build.session.jackson.proto.Candidate;
 import org.builder.session.jackson.client.SimpleClient;
 import org.builder.session.jackson.client.loadbalancing.ServiceRegistry;
 
-import com.google.common.base.Preconditions;
 import com.google.common.collect.Lists;
 
 import lombok.NonNull;
@@ -30,10 +29,6 @@ public class CandidateHandler {
             case SPECIFIC:
                 ServiceRegistry.Instance selectedInstance = selected.orElseThrow(() -> new IllegalArgumentException(
                         "Expected a selected instance, but found none for candidate " + candidate));
-                List<ServiceRegistry.Instance> hostsForValidation = registry.call();
-                Preconditions.checkArgument(hostsForValidation.stream().anyMatch(i -> i.equals(selectedInstance)),
-                                            "Expected at least one host to match " + selectedInstance
-                                                    + ", but none did " + hostsForValidation);
                 return Lists.newArrayList(selectedInstance);
             case ALL:
                 List<ServiceRegistry.Instance> instances = registry.call();

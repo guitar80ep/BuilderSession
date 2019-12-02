@@ -33,7 +33,7 @@ public class ServerImpl implements Server {
                        @NonNull final ServiceRegistry registry) {
         Preconditions.checkArgument(port >= 0 && port < (Short.MAX_VALUE * 2),
                                     "Port must be within the range [0, 65535], but was " + port);
-        this.host = HostnameUtils.resolveIpAddress(HostnameUtils.AddressType.PUBLIC);
+        this.host = HostnameUtils.resolveIpAddress(HostnameUtils.AddressType.PRIVATE);
         this.port = port;
         this.service = new ConsumerBackendService(this.host,
                                                   this.port,
