@@ -36,7 +36,8 @@ public class CandidateHandler {
                                                     + ", but none did " + hostsForValidation);
                 return Lists.newArrayList(selectedInstance);
             case ALL:
-                return registry.call();
+                List<ServiceRegistry.Instance> instances = registry.call();
+                return instances.isEmpty() ? Lists.newArrayList(self) : instances;
             default:
                 throw new IllegalArgumentException("An unexpected candidate type " + candidate + " was specified.");
         }

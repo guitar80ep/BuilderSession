@@ -75,7 +75,7 @@ public final class ConsumerBackendService extends ConsumerBackendServiceGrpc.Con
                                                                 // Convert to call a single SELF since it
                                                                 // will end up that way regardless.
                                                                 .setCandidate(Candidate.SELF);
-
+            
             return hosts.parallelStream()
                         .map(h -> consume(h, proxyRequest.build()))
                         .unordered()
