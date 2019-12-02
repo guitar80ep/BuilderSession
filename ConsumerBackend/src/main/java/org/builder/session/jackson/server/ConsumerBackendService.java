@@ -78,8 +78,9 @@ public final class ConsumerBackendService extends ConsumerBackendServiceGrpc.Con
 
             return hosts.parallelStream()
                         .map(h -> consume(h, proxyRequest.build()))
-                        .collect(Collectors.reducing(ConsumerBackendService::merge))
-                        .orElseThrow(() -> new IllegalStateException("No hosts found in merge."));
+                        .unordered()
+                        .reduce(ConsumerBackendService::merge)
+                        .orElseThrow(() -> new IllegalStateException("No hosts found in merge of: " + hosts));
         }, request, log);
 
         if(response.wasSuccessful()) {

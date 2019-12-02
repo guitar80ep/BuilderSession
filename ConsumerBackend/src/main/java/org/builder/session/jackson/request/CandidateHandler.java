@@ -1,11 +1,8 @@
 package org.builder.session.jackson.request;
 
-import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.ThreadLocalRandom;
-import java.util.function.BinaryOperator;
-import java.util.stream.Collectors;
 
 import org.build.session.jackson.proto.Candidate;
 import org.builder.session.jackson.client.SimpleClient;
@@ -43,12 +40,5 @@ public class CandidateHandler {
             default:
                 throw new IllegalArgumentException("An unexpected candidate type " + candidate + " was specified.");
         }
-    }
-
-    public static <T> T merge(@NonNull final T identity,
-                              @NonNull final Collection<T> value,
-                              @NonNull final BinaryOperator<T> merge) {
-        return value.stream()
-                    .collect(Collectors.reducing(identity, merge));
     }
 }

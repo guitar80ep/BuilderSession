@@ -474,7 +474,7 @@ Resources:
           Type: 'forward'
       Conditions:
         - Field: path-pattern
-          Values: "*"
+          Values: ["*"]
       ListenerArn: !Ref 'PublicLoadBalancerListener'
       Priority: 1
 
