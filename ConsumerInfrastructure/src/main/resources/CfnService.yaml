@@ -271,16 +271,8 @@ Resources:
           PortMappings:
             - ContainerPort: !Ref 'ConsolePort'
           Environment:
-            Fn::If:
-              - 'IsBridgeMode'
-              - - Name: CONSUMER_SERVICE_REGISTRY_ID
-                  Value: !GetAtt 'DiscoveryService.Id'
-              - - Name: CONSUMER_BACKEND_IP
-                  Value: !FindInMap ['ConsumerConfig', 'Console', 'ConsumerBackendIP']
-                - Name: CONSUMER_BACKEND_PORT
-                  Value: !Ref 'BackendPort'
-                - Name: CONSUMER_SERVICE_REGISTRY_ID
-                  Value: !GetAtt 'DiscoveryService.Id'
+            - Name: CONSUMER_SERVICE_REGISTRY_ID
+              Value: !GetAtt 'DiscoveryService.Id'
 
           LogConfiguration:
             LogDriver: awslogs

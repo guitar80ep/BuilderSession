@@ -41,18 +41,10 @@ public class SpringConfig implements WebMvcConfigurer {
     @Bean(name = "backendClient")
     @Scope(scopeName = "prototype")
     public ConsumerBackendClient backendClient(ServiceRegistry registry) {
-        String host = System.getenv("CONSUMER_BACKEND_IP");
-        String portAsString = System.getenv("CONSUMER_BACKEND_PORT");
-        if(host != null && portAsString != null) {
-            int port = Integer.parseInt(portAsString);
-            log.info("Created new backend client to self: " + host + ":" + port);
-            return new ConsumerBackendClient(host, port);
-        } else {
-            //Pick a random instance to make calls to.
-            ServiceRegistry.Instance instance = registry.resolveHost();
-            log.info("Created new backend client to random backend host: " + instance);
-            return new ConsumerBackendClient(instance.getAddress(), instance.getPort());
-        }
+        //Pick a random instance to make calls to.
+        ServiceRegistry.Instance instance = registry.resolveHost();
+        log.info("Created new backend client to random backend host: " + instance);
+        return new ConsumerBackendClient(instance.getAddress(), instance.getPort());
     }
 
     @Bean(name = "serviceRegistry")
