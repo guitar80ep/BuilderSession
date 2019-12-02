@@ -2,7 +2,6 @@ package org.builder.session.jackson.health;
 
 import static org.builder.session.jackson.utils.CommandLineArguments.parseArg;
 
-import java.net.InetAddress;
 import java.net.UnknownHostException;
 import java.util.function.Function;
 
@@ -12,6 +11,7 @@ import org.build.session.jackson.proto.ConsumeResponse;
 import org.builder.session.jackson.client.consumer.ConsumerBackendClient;
 import org.builder.session.jackson.client.loadbalancing.ServiceRegistry;
 import org.builder.session.jackson.client.loadbalancing.ServiceRegistryImpl;
+import org.builder.session.jackson.utils.HostnameUtils;
 
 public class Healthcheck {
 
@@ -21,7 +21,7 @@ public class Healthcheck {
         String serviceDiscoveryId = parseArg(args, true, "--serviceDiscoveryId", Function.identity()).get();
 
         try {
-            String address = InetAddress.getLocalHost().getHostAddress();
+            String address = HostnameUtils.resolveIpAddress(HostnameUtils.AddressType.PRIVATE);
             try (ConsumerBackendClient client = new ConsumerBackendClient(address, port)) {
                 ServiceRegistry registry = new ServiceRegistryImpl(serviceDiscoveryId);
                 if (runShallowHealthcheck(client) && runDeepHealthcheck(client, registry)) {
