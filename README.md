@@ -42,3 +42,14 @@ To setup the service in your ECS account, you merely perform a few simple steps.
 6. **Make a request.**
     * Input the data you would like to send in your request.
     * Hit save.
+    
+    
+## Exercises
+Perform these set of exercises to learn how you can use Container Insights to the fullest. Make sure you fully understand what is being done to implement each step.
+
+1. **Enabling/Disabling Container Insights**
+2. **Viewing Available "Out-Of-The-Box" Metrics**
+3. **Running Queries on Container Insights Logs**
+4. **Setting Up Custom Dimensionality and More Granular Metrics**
+5. **Determining the Size of a Task (or Container) Using Historical Data**
+6. **Automatic Resizing of a Task**
