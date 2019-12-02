@@ -89,9 +89,11 @@
         </div>
 
         <div id="PreviousResult" class="tabcontent">
-            <p>The results from the previous call (if applicable) are below.
-            <%= result == null ? "No Previous Call." : JsonHelper.format(result) %>
-            </p>
+            <p>The results from the previous call (if applicable) are below.</p>
+            <br/>
+            <pre>
+                <%= result == null ? "No Previous Call." : JsonHelper.format(result) %>
+            </pre>
         </div>
 
         <script>
