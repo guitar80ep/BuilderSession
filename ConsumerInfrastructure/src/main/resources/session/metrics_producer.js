@@ -52,7 +52,7 @@ exports.handler = (event, context) => {
                     },
                     {
                         Name: 'ContainerName',
-                        Value: 'ConsumerBackend'
+                        Value: process.env.CONTAINER_NAME
                     },
                 ],
                 Unit: 'None',
